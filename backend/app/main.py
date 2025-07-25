@@ -72,6 +72,42 @@ class TicketModel(BaseModel):
             logger.warning(f"Unexpected ticket status: {v}")
         return v
 
+class TicketCreateRequest(BaseModel):
+    """Request model for creating tickets."""
+    summary: str
+    description: Optional[str] = ""
+    priority: Optional[str] = "medium"
+    component: Optional[str] = "general"
+    status: Optional[str] = "new"
+    
+    @validator('summary')
+    def summary_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Summary cannot be empty')
+        return v.strip()
+    
+    @validator('priority')
+    def priority_must_be_valid(cls, v):
+        if v:
+            valid_priorities = ['low', 'medium', 'high', 'critical']
+            if v not in valid_priorities:
+                raise ValueError(f'Priority must be one of: {", ".join(valid_priorities)}')
+        return v or "medium"
+    
+    @validator('status')
+    def status_must_be_valid(cls, v):
+        if v:
+            valid_statuses = ['new', 'assigned', 'accepted', 'closed', 'reopened']
+            if v not in valid_statuses:
+                raise ValueError(f'Status must be one of: {", ".join(valid_statuses)}')
+        return v or "new"
+
+class TicketCreateResponse(BaseModel):
+    """Response model for ticket creation."""
+    status: str
+    message: str
+    ticket: TicketModel
+
 class TicketsResponse(BaseModel):
     """Response model for tickets endpoint."""
     status: str
@@ -587,6 +623,210 @@ async def get_tickets(user: ClerkUser = Depends(require_auth)) -> TicketsRespons
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail
         )
+
+
+@app.post(
+    "/api/tickets",
+    response_model=TicketCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create New Ticket",
+    description="Create a new ticket in the Trac database for the authenticated user. Returns the created ticket details.",
+    responses={
+        201: {
+            "description": "Ticket created successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "Ticket created successfully",
+                        "ticket": {
+                            "id": 42,
+                            "summary": "New feature request",
+                            "status": "new",
+                            "priority": "medium",
+                            "reporter": "user@example.com",
+                            "owner": "",
+                            "created": 1640995200
+                        }
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid input data"},
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Tickets"]
+)
+async def create_ticket(
+    ticket_data: TicketCreateRequest,
+    user: ClerkUser = Depends(require_auth)
+) -> TicketCreateResponse:
+    """
+    **Create New Ticket**
+    
+    This endpoint creates a new ticket in the legacy Trac database for the authenticated user.
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Request Body:**
+    - `summary`: Required ticket title/summary
+    - `description`: Optional detailed description
+    - `priority`: Optional priority level (low, medium, high, critical)
+    - `component`: Optional component name
+    - `status`: Optional initial status (defaults to 'new')
+    
+    **Returns:**
+    - Created ticket details
+    - Success status and message
+    
+    **Example Usage:**
+    ```
+    curl -X POST -H "Authorization: Bearer <token>" \
+         -H "Content-Type: application/json" \
+         -d '{"summary":"Fix bug","description":"Details here"}' \
+         http://localhost:8000/api/tickets
+    ```
+    """
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Create new ticket in database
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            
+            # Get current timestamp in microseconds (Trac format)
+            current_time = int(time.time() * 1000000)
+            
+            # Insert new ticket using Trac-compatible %s placeholders
+            cursor.execute("""
+                INSERT INTO ticket (type, time, changetime, component, priority, owner, reporter, status, summary, description)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                "task",  # Default type
+                current_time,
+                current_time,
+                ticket_data.component,
+                ticket_data.priority,
+                "",  # Owner starts empty (unassigned)
+                user.email,  # Set reporter to authenticated user's email
+                ticket_data.status,
+                ticket_data.summary,
+                ticket_data.description
+            ))
+            
+            # Get the ID of the created ticket
+            ticket_id = cursor.lastrowid
+            
+            logger.info(f"Created ticket {ticket_id} for user {user.email}")
+        
+        # Create response with the created ticket
+        created_ticket = TicketModel(
+            id=ticket_id,
+            summary=ticket_data.summary,
+            status=ticket_data.status,
+            priority=ticket_data.priority,
+            reporter=user.email,
+            owner="",
+            created=current_time // 1000000  # Convert back to seconds for response
+        )
+        
+        return TicketCreateResponse(
+            status="success",
+            message="Ticket created successfully",
+            ticket=created_ticket
+        )
+        
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to create ticket: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while creating ticket"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+
+
+@app.post("/api/tickets/simple-test")
+async def create_ticket_simple_test(ticket_data: TicketCreateRequest):
+    """Simple test for ticket creation"""
+    try:
+        # Test 1: Direct SQLite connection (bypass Trac)
+        import sqlite3
+        db_path = os.path.join(project_root, "test-projects", "my-drone-project", "db", "trac.db")
+        
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            current_time = int(time.time() * 1000000)
+            
+            # Use SQLite directly - this should work
+            cursor.execute(
+                "INSERT INTO ticket (type, time, changetime, component, priority, owner, reporter, status, summary, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("task", current_time, current_time, ticket_data.component, ticket_data.priority, "", "test@example.com", ticket_data.status, ticket_data.summary, ticket_data.description)
+            )
+            
+            ticket_id = cursor.lastrowid
+            conn.commit()
+        
+        return {"status": "success", "method": "direct_sqlite", "ticket_id": ticket_id, "summary": ticket_data.summary}
+        
+    except Exception as e:
+        return {"status": "error", "error": str(e), "error_type": type(e).__name__}
+
+
+@app.post("/api/tickets/trac-test")
+async def create_ticket_trac_test(ticket_data: TicketCreateRequest):
+    """Test ticket creation using Trac environment"""
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        env = Environment(trac_env_path)
+        
+        # Create new ticket in database using Trac
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            current_time = int(time.time() * 1000000)
+            
+            # Use Trac's database connection with %s placeholders (Trac converts these to ? internally)
+            cursor.execute(
+                "INSERT INTO ticket (type, time, changetime, component, priority, owner, reporter, status, summary, description) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                ("task", current_time, current_time, ticket_data.component, ticket_data.priority, "", "test@example.com", ticket_data.status, ticket_data.summary, ticket_data.description)
+            )
+            
+            ticket_id = cursor.lastrowid
+        
+        return {"status": "success", "method": "trac_environment", "ticket_id": ticket_id, "summary": ticket_data.summary}
+        
+    except Exception as e:
+        import traceback
+        return {"status": "error", "error": str(e), "error_type": type(e).__name__, "traceback": traceback.format_exc()}
 
 
 # SPA Fallback - catch all non-API routes and serve index.html
