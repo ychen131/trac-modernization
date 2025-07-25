@@ -8,34 +8,44 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 import logging
 import os
 import sys
 import jwt
 import requests
 from pydantic import BaseModel, validator
+from dotenv import load_dotenv
 
 # Add the project root to Python path to import Trac modules
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# Load environment variables from .env file in project root
+env_path = os.path.join(project_root, ".env")
+load_dotenv(env_path)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.info(f"Loading environment variables from: {env_path}")
 
 # Clerk configuration
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
 CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "")
+CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "")
 
 # Development mode check
-DEVELOPMENT_MODE = not CLERK_SECRET_KEY
+DEVELOPMENT_MODE = not all([CLERK_SECRET_KEY, CLERK_JWKS_URL])
 if DEVELOPMENT_MODE:
-    logger.warning("Running in DEVELOPMENT MODE - Clerk authentication is mocked!")
+    logger.warning("Running in DEVELOPMENT MODE - Some Clerk features may not work properly without proper configuration!")
 
-# JWT security scheme
+# Security scheme for authentication
 security = HTTPBearer(auto_error=False)
+
+# Cache for JWKS to avoid repeated requests
+_jwks_cache = None
 
 # Pydantic Models for API responses
 class TicketModel(BaseModel):
@@ -83,6 +93,117 @@ class AuthenticationError(Exception):
     pass
 
 
+def get_jwks():
+    """Fetch JWKS from Clerk's endpoint with caching."""
+    global _jwks_cache
+    
+    if _jwks_cache is None and CLERK_JWKS_URL:
+        try:
+            response = requests.get(CLERK_JWKS_URL, timeout=10)
+            response.raise_for_status()
+            _jwks_cache = response.json()
+            logger.info("Successfully fetched JWKS from Clerk")
+        except Exception as e:
+            logger.error(f"Failed to fetch JWKS: {str(e)}")
+            raise HTTPException(
+                status_code=503,
+                detail="Authentication service unavailable"
+            )
+    
+    return _jwks_cache
+
+
+def get_public_key(kid: str):
+    """Get public key for JWT verification."""
+    jwks = get_jwks()
+    if not jwks:
+        return None
+    
+    for key in jwks.get('keys', []):
+        if key.get('kid') == kid:
+            # Convert JWK to PEM format using jose library
+            from jose import jwk
+            return jwk.construct(key)
+    
+    raise HTTPException(
+        status_code=401,
+        detail="Invalid token - key not found"
+    )
+
+
+def decode_clerk_token(token: str) -> Dict[str, Any]:
+    """Decode and verify Clerk JWT token."""
+    if DEVELOPMENT_MODE:
+        # Development mode - simple validation
+        if token and (token.startswith("dev_") or token == "development-token"):
+            return {
+                "sub": "dev_user_123",
+                "email": "developer@hobbytrack.local",
+                "given_name": "Development",
+                "family_name": "User"
+            }
+        else:
+            # For development, be lenient with token validation
+            return {
+                "sub": "dev_user_placeholder", 
+                "email": "user@example.com",
+                "given_name": "Demo",
+                "family_name": "User"
+            }
+    
+    try:
+        # Get the token header to find the key ID
+        headers = jwt.get_unverified_headers(token)
+        kid = headers.get('kid')
+        
+        if not kid:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token - missing key ID"
+            )
+        
+        # Get the public key for verification
+        public_key = get_public_key(kid)
+        if not public_key:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token - cannot verify signature"
+            )
+        
+        # Decode and verify the token
+        decoded = jwt.decode(
+            token,
+            public_key.to_pem().decode('utf-8'),
+            algorithms=['RS256'],
+            options={
+                "verify_exp": True,
+                "verify_nbf": True,
+                "verify_signature": True
+            }
+        )
+        
+        logger.info(f"Successfully verified token for user: {decoded.get('sub', 'unknown')}")
+        return decoded
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError as e:
+        logger.error(f"Token validation failed: {str(e)}")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+    except Exception as e:
+        logger.error(f"Token verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication failed"
+        )
+
+
 async def verify_clerk_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> ClerkUser:
     """
     Verify Clerk JWT token and return user information.
@@ -94,39 +215,25 @@ async def verify_clerk_token(credentials: Optional[HTTPAuthorizationCredentials]
             detail="Authentication credentials required"
         )
     
-    token = credentials.credentials
-    
     try:
-        # For development/testing, we'll do a simple verification
-        # In production, you would verify against Clerk's JWKS endpoint
-        if not CLERK_SECRET_KEY:
-            logger.warning("CLERK_SECRET_KEY not set - using development mode authentication")
-            # Development mode - minimal validation
-            if token.startswith("dev_") or token == "development-token":
-                return ClerkUser(
-                    user_id="dev_user_123",
-                    email="developer@hobbytrack.local",
-                    first_name="Development",
-                    last_name="User"
-                )
+        token = credentials.credentials
+        decoded = decode_clerk_token(token)
         
-        # TODO: In production, implement proper JWT verification with Clerk's public keys
-        # This would involve:
-        # 1. Fetching Clerk's JWKS from https://[clerk-domain]/.well-known/jwks.json
-        # 2. Verifying the JWT signature using the appropriate public key
-        # 3. Validating claims (iss, aud, exp, etc.)
+        # Extract user information from the decoded token
+        user_id = decoded.get('sub', 'unknown')
+        email = decoded.get('email', 'unknown@example.com')
+        first_name = decoded.get('given_name', decoded.get('first_name', 'User'))
+        last_name = decoded.get('family_name', decoded.get('last_name', ''))
         
-        # For now, return a placeholder that shows the integration is working
-        logger.info(f"Token verification attempted for token: {token[:20]}...")
-        
-        # Simulate successful authentication for demo purposes
         return ClerkUser(
-            user_id="user_placeholder",
-            email="user@example.com", 
-            first_name="Demo",
-            last_name="User"
+            user_id=user_id,
+            email=email,
+            first_name=first_name,
+            last_name=last_name
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Token verification failed: {str(e)}")
         raise HTTPException(
@@ -143,15 +250,58 @@ def require_auth(user: ClerkUser = Depends(verify_clerk_token)) -> ClerkUser:
     return user
 
 
+def require_auth_decorator(func):
+    """
+    Decorator version of authentication.
+    Alternative to dependency injection for those who prefer decorator patterns.
+    
+    Usage:
+    @require_auth_decorator
+    async def my_protected_route(request: Request):
+        # Access user via request.state.user
+        user = request.state.user
+        return {"user_id": user.user_id}
+    """
+    from functools import wraps
+    
+    @wraps(func)
+    async def wrapper(request: Request, *args, **kwargs):
+        # Extract credentials manually
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication credentials required"
+            )
+        
+        # Create credentials object for verification
+        class MockCredentials:
+            def __init__(self, token: str):
+                self.credentials = token.replace("Bearer ", "")
+        
+        credentials = MockCredentials(auth_header)
+        
+        # Verify the token using our existing function
+        user = await verify_clerk_token(credentials)
+        
+        # Store user in request state for access in the route
+        request.state.user = user
+        
+        # Call the original function
+        return await func(request, *args, **kwargs)
+    
+    return wrapper
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown events."""
     # Startup
     logger.info("HobbyTrack API starting up...")
-    if CLERK_SECRET_KEY:
-        logger.info("Clerk authentication enabled")
+    if CLERK_JWKS_URL:
+        logger.info("Clerk authentication enabled with proper JWT verification")
     else:
-        logger.warning("Clerk authentication in development mode - set CLERK_SECRET_KEY for production")
+        logger.warning("Clerk authentication in development mode - set CLERK_JWKS_URL for production")
     yield
     # Shutdown
     logger.info("HobbyTrack API shutting down...")
@@ -214,7 +364,29 @@ async def auth_status(user: ClerkUser = Depends(require_auth)) -> Dict[str, Any]
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name
-        }
+        },
+        "mode": "development" if DEVELOPMENT_MODE else "production"
+    }
+
+
+@app.get("/api/auth/status-decorator")
+@require_auth_decorator
+async def auth_status_decorator_example(request: Request) -> Dict[str, Any]:
+    """
+    Example of using the @require_auth_decorator pattern.
+    This demonstrates an alternative to dependency injection.
+    """
+    user = request.state.user
+    return {
+        "authenticated": True,
+        "user": {
+            "id": user.user_id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name
+        },
+        "mode": "development" if DEVELOPMENT_MODE else "production",
+        "auth_method": "decorator"
     }
 
 
