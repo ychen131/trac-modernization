@@ -153,7 +153,7 @@ def decode_clerk_token(token: str) -> Dict[str, Any]:
     
     try:
         # Get the token header to find the key ID
-        headers = jwt.get_unverified_headers(token)
+        headers = jwt.get_unverified_header(token)
         kid = headers.get('kid')
         
         if not kid:
