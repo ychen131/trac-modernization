@@ -10,6 +10,7 @@ import {
 } from '@clerk/clerk-react';
 import './App.css';
 import TicketList from './components/TicketList';
+import { KanbanBoard } from './components/KanbanBoard';
 
 interface AppProps {}
 
@@ -88,7 +89,7 @@ const App: React.FC<AppProps> = () => {
       
       <main>
         <SignedIn>
-          <TicketList />
+          <KanbanBoard />
         </SignedIn>
       </main>
     </div>
