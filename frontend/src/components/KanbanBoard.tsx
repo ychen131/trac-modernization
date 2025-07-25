@@ -8,6 +8,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -72,34 +73,33 @@ const initialData: KanbanData = {
       id: 'in-progress',
       title: 'In Progress',
       color: '#fed7d7',
-      tasks: [
-        {
-          id: 'task-4',
-          title: 'Implement authentication',
-          description: 'Set up user login and registration functionality',
-          priority: 'high',
-        },
-        {
-          id: 'task-5',
-          title: 'Create database schema',
-          description: 'Design and implement the database structure',
-          priority: 'medium',
-        },
-      ],
+      tasks: [],
     },
-    {
-      id: 'review',
-      title: 'Review',
-      color: '#fef5e7',
-      tasks: [
-        {
-          id: 'task-6',
-          title: 'Write documentation',
-          description: 'Create user guides and technical documentation',
-          priority: 'medium',
-        },
-      ],
-    },
+          {
+        id: 'review',
+        title: 'Review',
+        color: '#fef5e7',
+        tasks: [
+          {
+            id: 'task-4',
+            title: 'Implement authentication',
+            description: 'Set up user login and registration functionality',
+            priority: 'high',
+          },
+          {
+            id: 'task-5',
+            title: 'Create database schema',
+            description: 'Design and implement the database structure',
+            priority: 'medium',
+          },
+          {
+            id: 'task-6',
+            title: 'Write documentation',
+            description: 'Create user guides and technical documentation',
+            priority: 'medium',
+          },
+        ],
+      },
     {
       id: 'done',
       title: 'Done',
@@ -189,6 +189,10 @@ interface ColumnProps {
 }
 
 function Column({ column }: ColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+  });
+
   return (
     <div className="kanban-column">
       <div 
@@ -203,10 +207,18 @@ function Column({ column }: ColumnProps) {
         items={column.tasks.map((task) => task.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="tasks-container">
+        <div 
+          ref={setNodeRef}
+          className={`tasks-container ${isOver ? 'drag-over' : ''}`}
+        >
           {column.tasks.map((task) => (
             <TaskCard key={task.id} task={task} />
           ))}
+          {column.tasks.length === 0 && (
+            <div className="empty-column-placeholder">
+              Drop tasks here
+            </div>
+          )}
         </div>
       </SortableContext>
     </div>
@@ -250,21 +262,33 @@ export function KanbanBoard() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Find source and destination columns
+    // Find source column
     const sourceColumn = data.columns.find((column) =>
       column.tasks.some((task) => task.id === activeId)
     );
-    
+
+    if (!sourceColumn) {
+      setActiveTask(null);
+      return;
+    }
+
+    // Find destination column - could be dropped on a task or directly on a column
     let destinationColumn = data.columns.find((column) =>
       column.tasks.some((task) => task.id === overId)
     );
 
-    // If dropped on a column header, get that column
+    // If not found, check if dropped directly on a column
     if (!destinationColumn) {
       destinationColumn = data.columns.find((column) => column.id === overId);
     }
 
-    if (!sourceColumn || !destinationColumn) {
+    if (!destinationColumn) {
+      setActiveTask(null);
+      return;
+    }
+
+    const sourceTask = sourceColumn.tasks.find((task) => task.id === activeId);
+    if (!sourceTask) {
       setActiveTask(null);
       return;
     }
@@ -272,7 +296,12 @@ export function KanbanBoard() {
     if (sourceColumn === destinationColumn) {
       // Reordering within the same column
       const oldIndex = sourceColumn.tasks.findIndex((task) => task.id === activeId);
-      const newIndex = sourceColumn.tasks.findIndex((task) => task.id === overId);
+      let newIndex = sourceColumn.tasks.findIndex((task) => task.id === overId);
+      
+      // If dropped on the column itself (not a specific task), put it at the end
+      if (newIndex === -1) {
+        newIndex = sourceColumn.tasks.length - 1;
+      }
 
       const newTasks = arrayMove(sourceColumn.tasks, oldIndex, newIndex);
 
@@ -286,12 +315,6 @@ export function KanbanBoard() {
       }));
     } else {
       // Moving between columns
-      const sourceTask = sourceColumn.tasks.find((task) => task.id === activeId);
-      if (!sourceTask) {
-        setActiveTask(null);
-        return;
-      }
-
       setData((prevData) => ({
         ...prevData,
         columns: prevData.columns.map((column) => {
@@ -303,9 +326,22 @@ export function KanbanBoard() {
             };
           } else if (column.id === destinationColumn.id) {
             // Add to destination column
+            // If dropped on a specific task, insert before it; otherwise add at end
+            const dropTargetIndex = column.tasks.findIndex((task) => task.id === overId);
+            let newTasks;
+            
+            if (dropTargetIndex !== -1) {
+              // Insert at specific position
+              newTasks = [...column.tasks];
+              newTasks.splice(dropTargetIndex, 0, sourceTask);
+            } else {
+              // Add at end (dropped on column itself)
+              newTasks = [...column.tasks, sourceTask];
+            }
+
             return {
               ...column,
-              tasks: [...column.tasks, sourceTask],
+              tasks: newTasks,
             };
           }
           return column;

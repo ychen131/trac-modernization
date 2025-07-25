@@ -85,6 +85,32 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.tasks-container.drag-over {
+  background-color: rgba(49, 130, 206, 0.05);
+  border: 2px dashed #3182ce;
+  border-radius: 8px;
+}
+
+.empty-column-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  color: #a0aec0;
+  font-style: italic;
+  border: 2px dashed #e2e8f0;
+  border-radius: 8px;
+  background-color: #f7fafc;
+  transition: all 0.2s ease;
+}
+
+.tasks-container.drag-over .empty-column-placeholder {
+  background-color: rgba(49, 130, 206, 0.1);
+  border-color: #3182ce;
+  color: #3182ce;
 }
 
 /* Task Card Styling */
@@ -312,6 +338,22 @@
   
   .task-assignee span {
     color: #e2e8f0;
+  }
+  
+  .empty-column-placeholder {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #718096;
+  }
+  
+  .tasks-container.drag-over {
+    background-color: rgba(49, 130, 206, 0.1);
+  }
+  
+  .tasks-container.drag-over .empty-column-placeholder {
+    background-color: rgba(49, 130, 206, 0.15);
+    border-color: #63b3ed;
+    color: #63b3ed;
   }
 }
 
