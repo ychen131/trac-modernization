@@ -8,227 +8,77 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
   arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import {
-  CSS,
-} from '@dnd-kit/utilities';
+import { KanbanColumn, Column } from './KanbanColumn';
+import { TaskCard, Task } from './TaskCard';
+import { useKanbanState, KanbanTask } from '../hooks/useKanbanState';
 import './KanbanBoard.css';
 
-// Types for our Kanban data structure
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  priority?: 'low' | 'medium' | 'high';
-  assignee?: string;
-}
+// Convert KanbanTask to Task interface for compatibility
+const convertKanbanTaskToTask = (kanbanTask: KanbanTask): Task => {
+  const task: Task = {
+    id: kanbanTask.id,
+    title: kanbanTask.title,
+    status: kanbanTask.status,
+    tags: [], // Could be derived from reporter or other fields
+  };
 
-interface Column {
-  id: string;
-  title: string;
-  tasks: Task[];
-  color: string;
-}
+  // Only add optional properties if they have values
+  if (kanbanTask.description) {
+    task.description = kanbanTask.description;
+  }
+  if (kanbanTask.priority) {
+    task.priority = kanbanTask.priority;
+  }
+  if (kanbanTask.assignee) {
+    task.assignee = kanbanTask.assignee;
+  }
+  if (kanbanTask.created) {
+    task.createdAt = new Date(kanbanTask.created * 1000).toISOString();
+  }
 
-interface KanbanData {
-  columns: Column[];
-}
-
-// Mock data for initial layout testing
-const initialData: KanbanData = {
-  columns: [
-    {
-      id: 'todo',
-      title: 'To Do',
-      color: '#e2e8f0',
-      tasks: [
-        {
-          id: 'task-1',
-          title: 'Setup project structure',
-          description: 'Initialize the basic project structure and dependencies',
-          priority: 'high',
-        },
-        {
-          id: 'task-2',
-          title: 'Design user interface',
-          description: 'Create wireframes and mockups for the application',
-          priority: 'medium',
-        },
-        {
-          id: 'task-3',
-          title: 'Research competitors',
-          description: 'Analyze similar applications in the market',
-          priority: 'low',
-        },
-      ],
-    },
-    {
-      id: 'in-progress',
-      title: 'In Progress',
-      color: '#fed7d7',
-      tasks: [],
-    },
-          {
-        id: 'review',
-        title: 'Review',
-        color: '#fef5e7',
-        tasks: [
-          {
-            id: 'task-4',
-            title: 'Implement authentication',
-            description: 'Set up user login and registration functionality',
-            priority: 'high',
-          },
-          {
-            id: 'task-5',
-            title: 'Create database schema',
-            description: 'Design and implement the database structure',
-            priority: 'medium',
-          },
-          {
-            id: 'task-6',
-            title: 'Write documentation',
-            description: 'Create user guides and technical documentation',
-            priority: 'medium',
-          },
-        ],
-      },
-    {
-      id: 'done',
-      title: 'Done',
-      color: '#c6f6d5',
-      tasks: [
-        {
-          id: 'task-7',
-          title: 'Setup development environment',
-          description: 'Configure development tools and environment',
-          priority: 'high',
-        },
-        {
-          id: 'task-8',
-          title: 'Choose technology stack',
-          description: 'Research and select appropriate technologies',
-          priority: 'high',
-        },
-      ],
-    },
-  ],
+  return task;
 };
 
-// Task Card Component
-interface TaskCardProps {
-  task: Task;
-}
-
-function TaskCard({ task }: TaskCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+// Convert KanbanColumn to Column interface for compatibility
+const convertKanbanColumnToColumn = (kanbanColumn: import('../hooks/useKanbanState').KanbanColumn): Column => {
+  const column: Column = {
+    id: kanbanColumn.id,
+    title: kanbanColumn.title,
+    tasks: kanbanColumn.tasks.map(convertKanbanTaskToTask),
+    color: kanbanColumn.color,
   };
 
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'high': return '#e53e3e';
-      case 'medium': return '#dd6b20';
-      case 'low': return '#38a169';
-      default: return '#718096';
-    }
-  };
+  // Only add optional properties if they have values
+  if (kanbanColumn.maxTasks !== undefined) {
+    column.maxTasks = kanbanColumn.maxTasks;
+  }
+  if (kanbanColumn.allowNewTasks !== undefined) {
+    column.allowNewTasks = kanbanColumn.allowNewTasks;
+  }
+  if (kanbanColumn.description) {
+    column.description = kanbanColumn.description;
+  }
 
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className="task-card"
-    >
-      <div className="task-header">
-        <h4 className="task-title">{task.title}</h4>
-        {task.priority && (
-          <span 
-            className="priority-badge"
-            style={{ backgroundColor: getPriorityColor(task.priority) }}
-          >
-            {task.priority}
-          </span>
-        )}
-      </div>
-      {task.description && (
-        <p className="task-description">{task.description}</p>
-      )}
-      {task.assignee && (
-        <div className="task-assignee">
-          <span>👤 {task.assignee}</span>
-        </div>
-      )}
-    </div>
-  );
-}
+  return column;
+};
 
-// Column Component
-interface ColumnProps {
-  column: Column;
-}
-
-function Column({ column }: ColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: column.id,
-  });
-
-  return (
-    <div className="kanban-column">
-      <div 
-        className="column-header"
-        style={{ backgroundColor: column.color }}
-      >
-        <h3 className="column-title">{column.title}</h3>
-        <span className="task-count">{column.tasks.length}</span>
-      </div>
-      
-      <SortableContext
-        items={column.tasks.map((task) => task.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div 
-          ref={setNodeRef}
-          className={`tasks-container ${isOver ? 'drag-over' : ''}`}
-        >
-          {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-          {column.tasks.length === 0 && (
-            <div className="empty-column-placeholder">
-              Drop tasks here
-            </div>
-          )}
-        </div>
-      </SortableContext>
-    </div>
-  );
-}
-
-// Main Kanban Board Component
 export function KanbanBoard() {
-  const [data, setData] = useState<KanbanData>(initialData);
+  const {
+    data,
+    loading,
+    error,
+    moveTask,
+    reorderTask,
+    refreshData,
+    retryFailedUpdate,
+  } = useKanbanState();
+
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -241,59 +91,58 @@ export function KanbanBoard() {
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
     
-    // Find the active task
+    // Find the active task and source column
     for (const column of data.columns) {
       const task = column.tasks.find((task) => task.id === active.id);
       if (task) {
-        setActiveTask(task);
+        setActiveTask(convertKanbanTaskToTask(task));
+        setDraggedFromColumn(column.id);
         break;
       }
     }
   }
 
-  function handleDragEnd(event: DragEndEvent) {
+  async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     
-    if (!over) {
+    if (!over || !draggedFromColumn) {
       setActiveTask(null);
+      setDraggedFromColumn(null);
       return;
     }
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Find source column
-    const sourceColumn = data.columns.find((column) =>
-      column.tasks.some((task) => task.id === activeId)
-    );
+    // Find destination column - could be dropped on a task or directly on a column
+    let destinationColumnId = overId;
+    let destinationColumn = data.columns.find((column) => column.id === overId);
 
+    // If not found, check if dropped on a task
+    if (!destinationColumn) {
+      for (const column of data.columns) {
+        if (column.tasks.some(task => task.id === overId)) {
+          destinationColumn = column;
+          destinationColumnId = column.id;
+          break;
+        }
+      }
+    }
+
+    if (!destinationColumn) {
+      setActiveTask(null);
+      setDraggedFromColumn(null);
+      return;
+    }
+
+    const sourceColumn = data.columns.find(col => col.id === draggedFromColumn);
     if (!sourceColumn) {
       setActiveTask(null);
+      setDraggedFromColumn(null);
       return;
     }
 
-    // Find destination column - could be dropped on a task or directly on a column
-    let destinationColumn = data.columns.find((column) =>
-      column.tasks.some((task) => task.id === overId)
-    );
-
-    // If not found, check if dropped directly on a column
-    if (!destinationColumn) {
-      destinationColumn = data.columns.find((column) => column.id === overId);
-    }
-
-    if (!destinationColumn) {
-      setActiveTask(null);
-      return;
-    }
-
-    const sourceTask = sourceColumn.tasks.find((task) => task.id === activeId);
-    if (!sourceTask) {
-      setActiveTask(null);
-      return;
-    }
-
-    if (sourceColumn === destinationColumn) {
+    if (draggedFromColumn === destinationColumnId) {
       // Reordering within the same column
       const oldIndex = sourceColumn.tasks.findIndex((task) => task.id === activeId);
       let newIndex = sourceColumn.tasks.findIndex((task) => task.id === overId);
@@ -303,53 +152,71 @@ export function KanbanBoard() {
         newIndex = sourceColumn.tasks.length - 1;
       }
 
-      const newTasks = arrayMove(sourceColumn.tasks, oldIndex, newIndex);
-
-      setData((prevData) => ({
-        ...prevData,
-        columns: prevData.columns.map((column) =>
-          column.id === sourceColumn.id
-            ? { ...column, tasks: newTasks }
-            : column
-        ),
-      }));
+      await reorderTask(activeId, draggedFromColumn, oldIndex, newIndex);
     } else {
       // Moving between columns
-      setData((prevData) => ({
-        ...prevData,
-        columns: prevData.columns.map((column) => {
-          if (column.id === sourceColumn.id) {
-            // Remove from source column
-            return {
-              ...column,
-              tasks: column.tasks.filter((task) => task.id !== activeId),
-            };
-          } else if (column.id === destinationColumn.id) {
-            // Add to destination column
-            // If dropped on a specific task, insert before it; otherwise add at end
-            const dropTargetIndex = column.tasks.findIndex((task) => task.id === overId);
-            let newTasks;
-            
-            if (dropTargetIndex !== -1) {
-              // Insert at specific position
-              newTasks = [...column.tasks];
-              newTasks.splice(dropTargetIndex, 0, sourceTask);
-            } else {
-              // Add at end (dropped on column itself)
-              newTasks = [...column.tasks, sourceTask];
-            }
+      let insertIndex: number | undefined;
+      
+      // If dropped on a specific task, insert before it
+      const targetTaskIndex = destinationColumn.tasks.findIndex(task => task.id === overId);
+      if (targetTaskIndex !== -1) {
+        insertIndex = targetTaskIndex;
+      }
 
-            return {
-              ...column,
-              tasks: newTasks,
-            };
-          }
-          return column;
-        }),
-      }));
+      await moveTask(activeId, draggedFromColumn, destinationColumnId, insertIndex);
     }
 
     setActiveTask(null);
+    setDraggedFromColumn(null);
+  }
+
+  // Handle task editing
+  const handleTaskEdit = (task: Task) => {
+    // For now, just log the edit action
+    // This could open a modal or navigate to an edit page
+    console.log('Edit task:', task);
+  };
+
+  // Handle task deletion
+  const handleTaskDelete = (taskId: string) => {
+    // For now, just log the delete action
+    // This would need a delete API endpoint
+    console.log('Delete task:', taskId);
+  };
+
+  // Handle priority change
+  const handleTaskPriorityChange = (taskId: string, priority: Task['priority']) => {
+    // For now, just log the priority change
+    // This would need an update API endpoint
+    console.log('Change priority:', taskId, priority);
+  };
+
+  // Handle adding new task
+  const handleAddTask = (columnId: string, taskTitle: string) => {
+    // For now, just log the add action
+    // This would need a create task API endpoint
+    console.log('Add task to column:', columnId, taskTitle);
+  };
+
+  // Handle column editing
+  const handleColumnEdit = (column: Column) => {
+    // For now, just log the column edit
+    console.log('Edit column:', column);
+  };
+
+  if (loading) {
+    return (
+      <div className="kanban-board-container">
+        <div className="kanban-header">
+          <h2>📋 Project Board</h2>
+          <p>Loading tickets...</p>
+        </div>
+        <div className="kanban-loading">
+          <div className="loading-spinner">⏳</div>
+          <p>Fetching your tickets from Trac...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -357,6 +224,18 @@ export function KanbanBoard() {
       <div className="kanban-header">
         <h2>📋 Project Board</h2>
         <p>Drag tasks between columns to update their status</p>
+        
+        {error && (
+          <div className="kanban-error">
+            <span className="error-message">⚠️ {error}</span>
+            <button 
+              onClick={refreshData}
+              className="retry-button"
+            >
+              🔄 Retry
+            </button>
+          </div>
+        )}
       </div>
 
       <DndContext
@@ -367,7 +246,17 @@ export function KanbanBoard() {
       >
         <div className="kanban-board">
           {data.columns.map((column) => (
-            <Column key={column.id} column={column} />
+            <KanbanColumn
+              key={column.id}
+              column={convertKanbanColumnToColumn(column)}
+              onTaskEdit={handleTaskEdit}
+              onTaskDelete={handleTaskDelete}
+              onTaskPriorityChange={handleTaskPriorityChange}
+              onAddTask={handleAddTask}
+              onColumnEdit={handleColumnEdit}
+              showAddButton={true}
+              compactTasks={false}
+            />
           ))}
         </div>
 
@@ -384,17 +273,38 @@ export function KanbanBoard() {
                                       activeTask.priority === 'medium' ? '#dd6b20' : '#38a169'
                     }}
                   >
-                    {activeTask.priority}
+                    {activeTask.priority === 'high' ? '🔴' : 
+                     activeTask.priority === 'medium' ? '🟡' : '🟢'} {activeTask.priority.toUpperCase()}
                   </span>
                 )}
               </div>
               {activeTask.description && (
                 <p className="task-description">{activeTask.description}</p>
               )}
+              {activeTask.assignee && (
+                <div className="task-assignee">
+                  <span>👤 {activeTask.assignee}</span>
+                </div>
+              )}
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Status indicator for pending updates */}
+      <div className="kanban-status">
+        <button 
+          onClick={refreshData}
+          className="refresh-button"
+          title="Refresh data from server"
+        >
+          🔄 Refresh
+        </button>
+        
+        <span className="status-text">
+          {loading ? 'Syncing...' : 'Ready'}
+        </span>
+      </div>
     </div>
   );
 } 
