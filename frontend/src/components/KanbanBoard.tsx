@@ -37,7 +37,33 @@ const convertKanbanTaskToTask = (kanbanTask: KanbanTask): Task => {
     task.assignee = kanbanTask.assignee;
   }
   if (kanbanTask.created) {
-    task.createdAt = new Date(kanbanTask.created * 1000).toISOString();
+    try {
+      // Handle different date formats from the API
+      let date: Date;
+      
+      if (typeof kanbanTask.created === 'string') {
+        // If it's already a string, try to parse it directly
+        date = new Date(kanbanTask.created);
+      } else if (typeof kanbanTask.created === 'number') {
+        // If it's a number, check if it needs to be converted from seconds to milliseconds
+        // Unix timestamps in seconds are typically 10 digits, milliseconds are 13 digits
+        const timestamp = kanbanTask.created.toString().length <= 10 
+          ? kanbanTask.created * 1000 
+          : kanbanTask.created;
+        date = new Date(timestamp);
+      } else {
+        // Fallback to current date if format is unrecognized
+        date = new Date();
+      }
+      
+      // Verify the date is valid before converting to ISO string
+      if (!isNaN(date.getTime())) {
+        task.createdAt = date.toISOString();
+      }
+    } catch (error) {
+      console.warn('Failed to parse created date:', kanbanTask.created, error);
+      // Don't set createdAt if parsing fails - it's optional
+    }
   }
 
   return task;

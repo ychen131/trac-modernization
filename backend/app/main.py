@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional, List, Union
 import logging
 import os
 import sys
+import time
 import jwt
 import requests
 from pydantic import BaseModel, validator
@@ -522,6 +523,32 @@ async def get_tickets(user: ClerkUser = Depends(require_auth)) -> TicketsRespons
             
             tickets = []
             for row in cursor.fetchall():
+                # Handle timestamp conversion - Trac might store in microseconds
+                raw_timestamp = row[6]
+                created_timestamp = raw_timestamp
+                
+                if raw_timestamp is not None:
+                    try:
+                        # Convert to integer if it's not already
+                        timestamp_int = int(raw_timestamp)
+                        
+                        # Check if timestamp is in microseconds (13+ digits) vs seconds (10 digits)
+                        if timestamp_int > 9999999999:  # More than 10 digits means likely microseconds
+                            created_timestamp = timestamp_int // 1000000  # Convert microseconds to seconds
+                        else:
+                            created_timestamp = timestamp_int
+                            
+                        # Validate the timestamp is reasonable (between 2000 and 2050)
+                        if created_timestamp < 946684800 or created_timestamp > 2524608000:
+                            logger.warning(f"Invalid timestamp {created_timestamp} for ticket {row[0]}, using current time")
+                            created_timestamp = int(time.time())
+                            
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Failed to parse timestamp {raw_timestamp} for ticket {row[0]}: {e}")
+                        created_timestamp = int(time.time())  # Use current time as fallback
+                else:
+                    created_timestamp = int(time.time())  # Use current time if None
+                
                 tickets.append({
                     "id": row[0],
                     "summary": row[1],
@@ -529,7 +556,7 @@ async def get_tickets(user: ClerkUser = Depends(require_auth)) -> TicketsRespons
                     "priority": row[3],
                     "reporter": row[4],
                     "owner": row[5],
-                    "created": row[6]
+                    "created": created_timestamp
                 })
         
         return TicketsResponse(
