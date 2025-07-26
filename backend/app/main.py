@@ -549,13 +549,14 @@ async def get_tickets(user: ClerkUser = Depends(require_auth)) -> TicketsRespons
         # Get tickets for the authenticated user
         with env.db_transaction as db:
             cursor = db.cursor()
-            # Get tickets with basic information
+            # Get tickets with basic information for the authenticated user
             cursor.execute("""
                 SELECT id, summary, status, priority, reporter, owner, time
                 FROM ticket 
+                WHERE owner = %s OR reporter = %s
                 ORDER BY time DESC 
                 LIMIT 20
-            """)
+            """, (user.email, user.email))
             
             tickets = []
             for row in cursor.fetchall():
