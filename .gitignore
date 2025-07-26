@@ -23,6 +23,7 @@ trac/htdocs/js/messages/*.js
 .project
 .pydevproject
 .settings
+test-projects/my-drone-project/log/trac.log
 
 # =================================================================
 # Modern Python Development Additions
