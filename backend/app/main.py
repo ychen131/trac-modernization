@@ -207,22 +207,35 @@ def get_public_key(kid: str):
 def decode_clerk_token(token: str) -> Dict[str, Any]:
     """Decode and verify Clerk JWT token."""
     if DEVELOPMENT_MODE:
-        # Development mode - simple validation
-        if token and (token.startswith("dev_") or token == "development-token"):
+        # Development mode - return different users for different tokens to test ownership
+        if token == "dev_test_token_123":
             return {
                 "sub": "dev_user_123",
+                "email": "user1@hobbytrack.local",
+                "given_name": "Test",
+                "family_name": "User1"
+            }
+        elif token == "development-token":
+            return {
+                "sub": "dev_user_456", 
+                "email": "user2@hobbytrack.local",
+                "given_name": "Test",
+                "family_name": "User2"
+            }
+        elif token and token.startswith("dev_"):
+            # Other dev tokens
+            return {
+                "sub": "dev_user_generic",
                 "email": "developer@hobbytrack.local",
                 "given_name": "Development",
                 "family_name": "User"
             }
         else:
-            # For development, be lenient with token validation
-            return {
-                "sub": "dev_user_placeholder", 
-                "email": "user@example.com",
-                "given_name": "Demo",
-                "family_name": "User"
-            }
+            # Invalid tokens in development mode should still fail
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token"
+            )
     
     try:
         # Get the token header to find the key ID
@@ -1069,7 +1082,7 @@ async def update_ticket(
         # Add ticket_id for WHERE clause
         update_values.append(ticket_id)
         
-        if not update_fields:
+        if len(update_fields) <= 1:  # Only changetime was added
             # No fields to update (except changetime)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -103,3 +103,7 @@ node_modules/
 # Task files
 # tasks.json
 # tasks/ 
+
+
+# log files
+test-projects/my-drone-project/log/trac.log
