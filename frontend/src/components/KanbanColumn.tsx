@@ -19,7 +19,7 @@ interface KanbanColumnProps {
   onTaskEdit?: (task: Task) => void;
   onTaskDelete?: (taskId: string) => void;
   onTaskPriorityChange?: (taskId: string, priority: Task['priority']) => void;
-  onAddTask?: (columnId: string, taskTitle: string) => void;
+  onAddTask?: () => void;
   onColumnEdit?: (column: Column) => void;
   showAddButton?: boolean;
   compactTasks?: boolean;
@@ -45,10 +45,9 @@ export function KanbanColumn({
   });
 
   const handleAddTask = () => {
-    if (newTaskTitle.trim() && onAddTask) {
-      onAddTask(column.id, newTaskTitle.trim());
-      setNewTaskTitle('');
-      setIsAddingTask(false);
+    // Open the ticket creation modal instead of inline creation
+    if (onAddTask) {
+      onAddTask();
     }
   };
 
@@ -210,7 +209,7 @@ export function KanbanColumn({
       </SortableContext>
 
       {/* Add Task Button */}
-      {!isAddingTask && canAddTasks && showAddButton && Boolean(column.tasks.length > 0) && (
+      {!isAddingTask && canAddTasks && showAddButton && (column.tasks.length > 0) && (
         <div className="column-footer">
           <button 
             onClick={() => setIsAddingTask(true)}

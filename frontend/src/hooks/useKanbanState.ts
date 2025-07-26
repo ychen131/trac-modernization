@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 
+// Import TicketFormData type for createTicket function
+export interface TicketFormData {
+  summary: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  component: string;
+  status: string;
+}
+
 // Types for Kanban data
 export interface KanbanTask {
   id: string;
@@ -83,6 +92,7 @@ interface UseKanbanStateReturn {
   reorderTask: (taskId: string, columnId: string, oldIndex: number, newIndex: number) => Promise<void>;
   refreshData: () => Promise<void>;
   retryFailedUpdate: (taskId: string) => Promise<void>;
+  createTicket: (ticketData: TicketFormData, columnId: string) => Promise<void>;
 }
 
 export function useKanbanState(): UseKanbanStateReturn {
@@ -179,6 +189,98 @@ export function useKanbanState(): UseKanbanStateReturn {
       throw new Error(err instanceof Error ? err.message : 'Failed to update ticket');
     }
   }, [getToken]);
+
+  // Create ticket with optimistic UI updates
+  const createTicket = useCallback(async (ticketData: TicketFormData, columnId: string): Promise<void> => {
+    // Generate temporary ID for optimistic update
+    const tempId = `temp-${Date.now()}`;
+    
+    // Create optimistic task
+    const optimisticTask: KanbanTask = {
+      id: tempId,
+      title: ticketData.summary,
+      description: ticketData.description,
+      priority: ticketData.priority as 'low' | 'medium' | 'high', // Exclude 'critical' for now
+      status: ticketData.status,
+      reporter: 'unknown@example.com', // Will be set by server based on auth token
+      created: Date.now() / 1000 // Current timestamp
+    };
+
+    // 1. OPTIMISTIC UPDATE - Add to UI immediately
+    setData(prevData => {
+      const newColumns = prevData.columns.map(col => {
+        if (col.id === columnId) {
+          return { ...col, tasks: [...col.tasks, optimisticTask] };
+        }
+        return col;
+      });
+      return { columns: newColumns };
+    });
+
+    try {
+      // 2. API CALL - Create ticket on server
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ticketData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const createdTicket = await response.json();
+      
+      // 3. SUCCESS - Replace temp ticket with real ticket
+      setData(prevData => {
+        const newColumns = prevData.columns.map(col => {
+          if (col.id === columnId) {
+            const updatedTasks = col.tasks.map(task => 
+              task.id === tempId 
+                ? { 
+                    ...optimisticTask, 
+                    id: createdTicket.id.toString(),
+                    // Update any server-provided fields
+                    created: createdTicket.created || optimisticTask.created
+                  }
+                : task
+            );
+            return { ...col, tasks: updatedTasks };
+          }
+          return col;
+        });
+        return { columns: newColumns };
+      });
+      
+      // Clear any previous errors
+      setError(null);
+      
+    } catch (error) {
+      // 4. ERROR - Remove optimistic ticket and show error
+      setData(prevData => {
+        const newColumns = prevData.columns.map(col => {
+          if (col.id === columnId) {
+            return { ...col, tasks: col.tasks.filter(task => task.id !== tempId) };
+          }
+          return col;
+        });
+        return { columns: newColumns };
+      });
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create ticket';
+      setError(`Failed to create ticket: ${errorMessage}`);
+      throw error;
+    }
+  }, [getToken, setData, setError]);
 
   // Refresh data from server
   const refreshData = useCallback(async () => {
@@ -334,5 +436,6 @@ export function useKanbanState(): UseKanbanStateReturn {
     reorderTask,
     refreshData,
     retryFailedUpdate,
+    createTicket,
   };
 } 

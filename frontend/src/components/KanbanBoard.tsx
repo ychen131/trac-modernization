@@ -12,9 +12,11 @@ import {
 import {
   arrayMove,
 } from '@dnd-kit/sortable';
+// Removed useAuth import since authentication is now handled by the useKanbanState hook
 import { KanbanColumn, Column } from './KanbanColumn';
 import { TaskCard, Task } from './TaskCard';
 import { useKanbanState, KanbanTask } from '../hooks/useKanbanState';
+import { TicketCreateForm, TicketFormData } from './TicketCreateForm';
 import './KanbanBoard.css';
 
 // Convert KanbanTask to Task interface for compatibility
@@ -101,10 +103,19 @@ export function KanbanBoard() {
     reorderTask,
     refreshData,
     retryFailedUpdate,
+    createTicket,
   } = useKanbanState();
+  
+  // Authentication is now handled by the useKanbanState hook
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [draggedFromColumn, setDraggedFromColumn] = useState<string | null>(null);
+  
+  // Ticket creation form state
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formColumnId, setFormColumnId] = useState<string>('');
+  const [formColumnTitle, setFormColumnTitle] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -217,11 +228,45 @@ export function KanbanBoard() {
     console.log('Change priority:', taskId, priority);
   };
 
-  // Handle adding new task
-  const handleAddTask = (columnId: string, taskTitle: string) => {
-    // For now, just log the add action
-    // This would need a create task API endpoint
-    console.log('Add task to column:', columnId, taskTitle);
+  // Handle opening the ticket creation form
+  const handleAddTask = (columnId: string) => {
+    const column = data.columns.find(col => col.id === columnId);
+    if (column) {
+      setFormColumnId(columnId);
+      setFormColumnTitle(column.title);
+      setIsFormOpen(true);
+    }
+  };
+
+  // Handle ticket creation form submission with optimistic updates
+  const handleCreateTicket = async (formData: TicketFormData): Promise<void> => {
+    setIsSubmitting(true);
+    
+    try {
+      // Use the optimistic createTicket function from useKanbanState
+      // This will immediately add the ticket to the UI, then update it when the API call completes
+      await createTicket(formData, formColumnId);
+      
+      // Success! Close form (no need to refresh data - optimistic updates handled it)
+      setIsFormOpen(false);
+      console.log('Ticket created successfully with optimistic updates');
+      
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      // Error will be displayed by the form component
+      // The optimistic update was already rolled back by the hook
+      // Don't close the form on error so user can retry
+      throw error; // Re-throw to let form handle the error display
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle form cancellation
+  const handleFormCancel = () => {
+    setIsFormOpen(false);
+    setFormColumnId('');
+    setFormColumnTitle('');
   };
 
   // Handle column editing
@@ -278,7 +323,7 @@ export function KanbanBoard() {
               onTaskEdit={handleTaskEdit}
               onTaskDelete={handleTaskDelete}
               onTaskPriorityChange={handleTaskPriorityChange}
-              onAddTask={handleAddTask}
+              onAddTask={() => handleAddTask(column.id)}
               onColumnEdit={handleColumnEdit}
               showAddButton={true}
               compactTasks={false}
@@ -331,6 +376,16 @@ export function KanbanBoard() {
           {loading ? 'Syncing...' : 'Ready'}
         </span>
       </div>
+
+      {/* Ticket Creation Form Modal */}
+      <TicketCreateForm
+        columnId={formColumnId}
+        columnTitle={formColumnTitle}
+        isOpen={isFormOpen}
+        onSubmit={handleCreateTicket}
+        onCancel={handleFormCancel}
+        loading={isSubmitting}
+      />
     </div>
   );
 } 
