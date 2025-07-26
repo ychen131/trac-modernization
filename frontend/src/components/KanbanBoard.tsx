@@ -102,6 +102,7 @@ export function KanbanBoard() {
     refreshData,
     // retryFailedUpdate, // Available for future error recovery features
     createTicket,
+    deleteTicket,
   } = useKanbanState();
   
   // Authentication is now handled by the useKanbanState hook
@@ -213,10 +214,14 @@ export function KanbanBoard() {
   };
 
   // Handle task deletion
-  const handleTaskDelete = (taskId: string) => {
-    // For now, just log the delete action
-    // This would need a delete API endpoint
-    console.log('Delete task:', taskId);
+  const handleTaskDelete = async (taskId: string) => {
+    try {
+      await deleteTicket(taskId);
+    } catch (error) {
+      // Error handling is already done in deleteTicket function
+      // The optimistic update will be rolled back automatically
+      console.error('Failed to delete task:', error);
+    }
   };
 
   // Handle priority change

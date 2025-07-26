@@ -153,6 +153,12 @@ class TicketUpdateResponse(BaseModel):
     message: str
     ticket: TicketModel
 
+class TicketDeleteResponse(BaseModel):
+    """Response model for ticket deletion."""
+    status: str
+    message: str
+    deleted_ticket_id: int
+
 class ClerkUser(BaseModel):
     """User information from Clerk authentication."""
     user_id: str
@@ -1174,6 +1180,141 @@ async def update_ticket(
         logger.error(f"Failed to update ticket {ticket_id}: {str(e)}")
         # Don't expose internal error details in production
         error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while updating ticket"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+
+
+@app.delete(
+    "/api/tickets/{ticket_id}",
+    response_model=TicketDeleteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Delete Ticket",
+    description="Delete a ticket from the Trac database. Users can only delete tickets they own or created.",
+    responses={
+        200: {
+            "description": "Ticket deleted successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "Ticket deleted successfully",
+                        "deleted_ticket_id": 1
+                    }
+                }
+            }
+        },
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden - user doesn't own this ticket"},
+        404: {"description": "Ticket not found"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Tickets"]
+)
+async def delete_ticket(
+    ticket_id: int,
+    user: ClerkUser = Depends(require_auth)
+) -> TicketDeleteResponse:
+    """
+    **Delete Ticket**
+    
+    This endpoint deletes a ticket from the legacy Trac database for authenticated users.
+    Users can only delete tickets they own (assigned to) or created (reporter).
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Ownership Rules:**
+    - Users can delete tickets they are the `owner` of (assigned to)
+    - Users can delete tickets they are the `reporter` of (created)
+    - Returns 403 Forbidden if user doesn't have permission
+    
+    **Returns:**
+    - Success status and message
+    - ID of deleted ticket
+    
+    **Example Usage:**
+    ```
+    curl -X DELETE -H "Authorization: Bearer <token>" \
+         http://localhost:8000/api/tickets/1
+    ```
+    """
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Check if ticket exists and user has permission to delete it
+        ticket_data = await check_ticket_ownership(ticket_id, user, env)
+        
+        if ticket_data is None:
+            # First check if ticket exists at all
+            with env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT id FROM ticket WHERE id = %s", (ticket_id,))
+                if cursor.fetchone() is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Ticket {ticket_id} not found"
+                    )
+            
+            # Ticket exists but user doesn't have permission
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You can only delete tickets you own or created."
+            )
+        
+        # Delete ticket from database
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            
+            # Delete the ticket
+            cursor.execute("DELETE FROM ticket WHERE id = %s", (ticket_id,))
+            
+            # Check if any rows were affected
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to delete ticket"
+                )
+        
+        logger.info(f"Deleted ticket {ticket_id} for user {user.email}")
+        
+        return TicketDeleteResponse(
+            status="success",
+            message="Ticket deleted successfully",
+            deleted_ticket_id=ticket_id
+        )
+        
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to delete ticket {ticket_id}: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while deleting ticket"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail

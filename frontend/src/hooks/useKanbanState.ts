@@ -93,6 +93,8 @@ interface UseKanbanStateReturn {
   refreshData: () => Promise<void>;
   retryFailedUpdate: (taskId: string) => Promise<void>;
   createTicket: (ticketData: TicketFormData, columnId: string) => Promise<void>;
+  deleteTicket: (taskId: string) => Promise<void>;
+  updateTicket: (taskId: string, updateData: Partial<TicketFormData>) => Promise<void>;
 }
 
 export function useKanbanState(): UseKanbanStateReturn {
@@ -176,12 +178,8 @@ export function useKanbanState(): UseKanbanStateReturn {
   // Update ticket status on server
   const updateTicketStatus = useCallback(async (taskId: string, newStatus: string): Promise<void> => {
     try {
-      // For now, since the update endpoint doesn't exist yet (Task 11),
-      // we'll prepare the infrastructure but not make the actual call
-      // When Task 11 is completed, uncomment and adjust this code:
-      // const token = await getToken();
+      const token = await getToken();
       
-      /*
       const response = await fetch(`/api/tickets/${taskId}`, {
         method: 'PATCH',
         headers: {
@@ -192,15 +190,14 @@ export function useKanbanState(): UseKanbanStateReturn {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to update ticket: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to update ticket: ${response.status} ${response.statusText} - ${errorText}`);
       }
-      */
-      
-      // Simulate API call for now
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log(`Successfully updated ticket ${taskId} to status ${newStatus}`);
+
+      const result = await response.json();
+      console.log(`Successfully updated ticket ${taskId} to status ${newStatus}:`, result);
     } catch (err) {
+      console.error('Error updating ticket status:', err);
       throw new Error(err instanceof Error ? err.message : 'Failed to update ticket');
     }
   }, [getToken]);
@@ -438,6 +435,144 @@ export function useKanbanState(): UseKanbanStateReturn {
     }
   }, [pendingUpdates, updateTicketStatus]);
 
+  // Delete ticket from server and optimistically update UI
+  const deleteTicket = useCallback(async (taskId: string): Promise<void> => {
+    // Store original state for potential rollback
+    const originalData = { ...data };
+    
+    try {
+      // Find the task and its column for optimistic update
+      let taskToDelete: KanbanTask | null = null;
+      let sourceColumnId: string | null = null;
+      
+      for (const column of data.columns) {
+        const task = column.tasks.find(t => t.id === taskId);
+        if (task) {
+          taskToDelete = task;
+          sourceColumnId = column.id;
+          break;
+        }
+      }
+      
+      if (!taskToDelete || !sourceColumnId) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      
+      // Optimistic update: Remove task immediately from UI
+      setData(prevData => ({
+        ...prevData,
+        columns: prevData.columns.map(column => 
+          column.id === sourceColumnId
+            ? { ...column, tasks: column.tasks.filter(t => t.id !== taskId) }
+            : column
+        )
+      }));
+      
+      // Attempt server deletion
+      const token = await getToken();
+      
+      const response = await fetch(`/api/tickets/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to delete ticket: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`Successfully deleted ticket ${taskId}:`, result);
+      
+    } catch (err) {
+      console.error('Error deleting ticket:', err);
+      
+      // Rollback optimistic update on failure
+      setData(originalData);
+      setError(`Failed to delete task: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      throw err;
+    }
+  }, [data, getToken]);
+
+  // Update ticket details on server and optimistically update UI
+  const updateTicket = useCallback(async (taskId: string, updateData: Partial<TicketFormData>): Promise<void> => {
+    // Store original state for potential rollback
+    const originalData = { ...data };
+    
+    try {
+      // Find the task and its column for optimistic update
+      let taskToUpdate: KanbanTask | null = null;
+      let sourceColumnId: string | null = null;
+      
+      for (const column of data.columns) {
+        const task = column.tasks.find(t => t.id === taskId);
+        if (task) {
+          taskToUpdate = task;
+          sourceColumnId = column.id;
+          break;
+        }
+      }
+      
+      if (!taskToUpdate || !sourceColumnId) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      
+      // Optimistic update: Update task immediately in UI
+      setData(prevData => ({
+        ...prevData,
+        columns: prevData.columns.map(column => 
+          column.id === sourceColumnId
+            ? { 
+                ...column, 
+                tasks: column.tasks.map(task => 
+                  task.id === taskId 
+                    ? { 
+                        ...task, 
+                        title: updateData.summary || task.title,
+                        description: updateData.description !== undefined ? updateData.description : task.description,
+                        priority: updateData.priority || task.priority,
+                        status: updateData.status || task.status,
+                      } as KanbanTask
+                    : task
+                )
+              }
+            : column
+        )
+      }));
+      
+      // Attempt server update
+      const token = await getToken();
+      
+      const response = await fetch(`/api/tickets/${taskId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update ticket: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log(`Successfully updated ticket ${taskId}:`, result);
+      
+    } catch (err) {
+      console.error('Error updating ticket:', err);
+      
+      // Rollback optimistic update on failure
+      setData(originalData);
+      setError(`Failed to update task: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      throw err;
+    }
+  }, [data, getToken]);
+
   // Initial load
   useEffect(() => {
     refreshData();
@@ -452,5 +587,7 @@ export function useKanbanState(): UseKanbanStateReturn {
     refreshData,
     retryFailedUpdate,
     createTicket,
+    deleteTicket,
+    updateTicket,
   };
 } 
