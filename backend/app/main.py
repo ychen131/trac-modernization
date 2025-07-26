@@ -388,6 +388,19 @@ async def health_check() -> Dict[str, str]:
     return {"status": "healthy", "service": "hobbytrack-api"}
 
 
+@app.get("/api/debug/mode")
+async def debug_mode():
+    """Debug endpoint to check current mode and configuration"""
+    return {
+        "development_mode": DEVELOPMENT_MODE,
+        "clerk_secret_key_set": bool(CLERK_SECRET_KEY),
+        "clerk_jwks_url_set": bool(CLERK_JWKS_URL),
+        "clerk_publishable_key_set": bool(CLERK_PUBLISHABLE_KEY),
+        "clerk_secret_key_length": len(CLERK_SECRET_KEY) if CLERK_SECRET_KEY else 0,
+        "clerk_jwks_url_value": CLERK_JWKS_URL if CLERK_JWKS_URL else "not set"
+    }
+
+
 @app.get("/api/auth/status")
 async def auth_status(user: ClerkUser = Depends(require_auth)) -> Dict[str, Any]:
     """
