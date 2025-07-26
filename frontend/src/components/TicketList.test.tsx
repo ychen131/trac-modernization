@@ -1,4 +1,4 @@
-import React from 'react';
+// React import removed - not needed for modern React components
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TicketList from './TicketList';

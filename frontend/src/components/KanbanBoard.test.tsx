@@ -1,5 +1,5 @@
-import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+// React import removed - not needed for modern React components
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { KanbanBoard } from './KanbanBoard';

@@ -1,5 +1,5 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+// React import removed - not needed for modern React components
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DndContext } from '@dnd-kit/core';
@@ -218,7 +218,7 @@ describe('KanbanColumn Component', () => {
       const title = screen.getByText('To Do');
       await user.dblClick(title);
       
-      const input = screen.getByDisplayValue('To Do');
+      screen.getByDisplayValue('To Do'); // Verify input appears
       await user.keyboard('{Enter}');
       
       expect(mockOnColumnEdit).not.toHaveBeenCalled();
@@ -338,7 +338,7 @@ describe('KanbanColumn Component', () => {
       const addButton = screen.getByText('+ Add task');
       await user.click(addButton);
       
-      const input = screen.getByPlaceholderText('Enter task title...');
+      screen.getByPlaceholderText('Enter task title...'); // Verify input appears
       await user.keyboard('{Enter}');
       
       expect(mockOnAddTask).not.toHaveBeenCalled();

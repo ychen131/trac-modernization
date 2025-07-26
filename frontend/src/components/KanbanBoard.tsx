@@ -9,12 +9,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import {
-  arrayMove,
-} from '@dnd-kit/sortable';
+// arrayMove import removed - not currently used
 // Removed useAuth import since authentication is now handled by the useKanbanState hook
 import { KanbanColumn, Column } from './KanbanColumn';
-import { TaskCard, Task } from './TaskCard';
+import { Task } from './TaskCard'; // TaskCard component removed - not currently used
 import { useKanbanState, KanbanTask } from '../hooks/useKanbanState';
 import { TicketCreateForm, TicketFormData } from './TicketCreateForm';
 import './KanbanBoard.css';
@@ -102,7 +100,7 @@ export function KanbanBoard() {
     moveTask,
     reorderTask,
     refreshData,
-    retryFailedUpdate,
+    // retryFailedUpdate, // Available for future error recovery features
     createTicket,
   } = useKanbanState();
   

@@ -134,6 +134,10 @@ export function useKanbanState(): UseKanbanStateReturn {
   const fetchTickets = useCallback(async (): Promise<KanbanTask[]> => {
     try {
       const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required. Please sign in.');
+      }
+
       const response = await fetch('/api/tickets', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -142,12 +146,29 @@ export function useKanbanState(): UseKanbanStateReturn {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please sign in again.');
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. You don\'t have permission to view tickets.');
+        }
+        if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.');
+        }
         throw new Error(`Failed to fetch tickets: ${response.statusText}`);
       }
 
       const data = await response.json();
       return data.tickets.map(ticketToTask);
     } catch (err) {
+      // If it's already a formatted error message, preserve it
+      if (err instanceof Error && (
+        err.message.includes('Authentication') ||
+        err.message.includes('Access denied') ||
+        err.message.includes('Server error')
+      )) {
+        throw err;
+      }
       throw new Error(err instanceof Error ? err.message : 'Failed to fetch tickets');
     }
   }, [getToken, ticketToTask]);
@@ -155,11 +176,10 @@ export function useKanbanState(): UseKanbanStateReturn {
   // Update ticket status on server
   const updateTicketStatus = useCallback(async (taskId: string, newStatus: string): Promise<void> => {
     try {
-      const token = await getToken();
-      
       // For now, since the update endpoint doesn't exist yet (Task 11),
       // we'll prepare the infrastructure but not make the actual call
       // When Task 11 is completed, uncomment and adjust this code:
+      // const token = await getToken();
       
       /*
       const response = await fetch(`/api/tickets/${taskId}`, {
@@ -178,11 +198,6 @@ export function useKanbanState(): UseKanbanStateReturn {
       
       // Simulate API call for now
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // For testing purposes, randomly simulate failures
-      if (Math.random() < 0.1) { // 10% chance of failure
-        throw new Error('Simulated server error');
-      }
       
       console.log(`Successfully updated ticket ${taskId} to status ${newStatus}`);
     } catch (err) {
@@ -380,7 +395,7 @@ export function useKanbanState(): UseKanbanStateReturn {
   }, [data, updateTicketStatus]);
 
   // Reorder task within the same column
-  const reorderTask = useCallback(async (taskId: string, columnId: string, oldIndex: number, newIndex: number) => {
+  const reorderTask = useCallback(async (_taskId: string, columnId: string, oldIndex: number, newIndex: number) => {
     if (oldIndex === newIndex) return;
 
     // Optimistic update: Reorder immediately in UI

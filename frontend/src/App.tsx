@@ -1,7 +1,5 @@
 import React from 'react';
 import {
-  SignedIn,
-  SignedOut,
   SignInButton,
   SignUpButton,
   UserButton,
@@ -61,23 +59,21 @@ const App: React.FC<AppProps> = () => {
           Loaded: {isLoaded ? 'Yes' : 'No'}
         </div>
         
-        <SignedOut>
-          <>
-            <div className="auth-section">
-              <h2>Welcome! Please sign in to continue</h2>
-              <div className="auth-buttons">
-                <SignInButton mode="modal">
-                  <button className="auth-button signin">Sign In</button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="auth-button signup">Sign Up</button>
-                </SignUpButton>
-              </div>
+        {!isSignedIn && (
+          <div className="auth-section">
+            <h2>Welcome! Please sign in to continue</h2>
+            <div className="auth-buttons">
+              <SignInButton mode="modal">
+                <button className="auth-button signin">Sign In</button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="auth-button signup">Sign Up</button>
+              </SignUpButton>
             </div>
-          </>
-        </SignedOut>
+          </div>
+        )}
         
-        <SignedIn>
+        {isSignedIn && (
           <>
             <div className="user-section">
               <UserButton afterSignOutUrl="/" />
@@ -88,17 +84,15 @@ const App: React.FC<AppProps> = () => {
               {apiStatus}
             </div>
           </>
-        </SignedIn>
+        )}
       </header>
       
       <main>
-        <SignedIn>
-          <>
-            <ErrorBoundary>
-              <KanbanBoard />
-            </ErrorBoundary>
-          </>
-        </SignedIn>
+        {isSignedIn && (
+          <ErrorBoundary>
+            <KanbanBoard />
+          </ErrorBoundary>
+        )}
       </main>
     </div>
   );

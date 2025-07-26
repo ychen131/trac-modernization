@@ -20,7 +20,7 @@ vi.mock('@clerk/clerk-react', () => ({
     isLoaded: true
   }),
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
-  SignedOut: ({ children }: { children: React.ReactNode }) => null,
+  SignedOut: ({ children: _ }: { children: React.ReactNode }) => null,
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
   SignUpButton: ({ children }: { children: React.ReactNode }) => children,
   UserButton: () => React.createElement('div', { 'data-testid': 'user-button' }, 'User Button')
