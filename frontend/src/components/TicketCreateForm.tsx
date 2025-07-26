@@ -223,6 +223,8 @@ export const TicketCreateForm: React.FC<TicketCreateFormProps> = ({
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
+    
+    return undefined;
   }, [isOpen, loading, onCancel]);
 
   // Handle backdrop click

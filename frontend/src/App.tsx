@@ -9,7 +9,6 @@ import {
   useUser,
 } from '@clerk/clerk-react';
 import './App.css';
-import TicketList from './components/TicketList';
 import { KanbanBoard } from './components/KanbanBoard';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -63,36 +62,42 @@ const App: React.FC<AppProps> = () => {
         </div>
         
         <SignedOut>
-          <div className="auth-section">
-            <h2>Welcome! Please sign in to continue</h2>
-            <div className="auth-buttons">
-              <SignInButton mode="modal">
-                <button className="auth-button signin">Sign In</button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="auth-button signup">Sign Up</button>
-              </SignUpButton>
+          <>
+            <div className="auth-section">
+              <h2>Welcome! Please sign in to continue</h2>
+              <div className="auth-buttons">
+                <SignInButton mode="modal">
+                  <button className="auth-button signin">Sign In</button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="auth-button signup">Sign Up</button>
+                </SignUpButton>
+              </div>
             </div>
-          </div>
+          </>
         </SignedOut>
         
         <SignedIn>
-          <div className="user-section">
-            <UserButton afterSignOutUrl="/" />
-            <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
-            <p>Email: {user?.primaryEmailAddress?.emailAddress}</p>
-          </div>
-          <div className="api-status">
-            {apiStatus}
-          </div>
+          <>
+            <div className="user-section">
+              <UserButton afterSignOutUrl="/" />
+              <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
+              <p>Email: {user?.primaryEmailAddress?.emailAddress}</p>
+            </div>
+            <div className="api-status">
+              {apiStatus}
+            </div>
+          </>
         </SignedIn>
       </header>
       
       <main>
         <SignedIn>
-          <ErrorBoundary>
-            <KanbanBoard />
-          </ErrorBoundary>
+          <>
+            <ErrorBoundary>
+              <KanbanBoard />
+            </ErrorBoundary>
+          </>
         </SignedIn>
       </main>
     </div>

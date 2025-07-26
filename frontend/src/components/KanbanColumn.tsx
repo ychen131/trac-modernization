@@ -76,7 +76,7 @@ export function KanbanColumn({
     }
   };
 
-  const isAtMaxCapacity = column.maxTasks && column.tasks.length >= column.maxTasks;
+  const isAtMaxCapacity = Boolean(column.maxTasks && column.tasks.length >= column.maxTasks);
   const canAddTasks = column.allowNewTasks !== false && !isAtMaxCapacity;
 
   return (
