@@ -117,6 +117,42 @@ class TicketsResponse(BaseModel):
     total_count: int
     message: Optional[str] = None
 
+class TicketUpdateRequest(BaseModel):
+    """Request model for updating tickets."""
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    owner: Optional[str] = None
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    
+    @validator('status')
+    def status_must_be_valid(cls, v):
+        if v:
+            valid_statuses = ['new', 'assigned', 'accepted', 'closed', 'reopened']
+            if v not in valid_statuses:
+                raise ValueError(f'Status must be one of: {", ".join(valid_statuses)}')
+        return v
+    
+    @validator('priority')
+    def priority_must_be_valid(cls, v):
+        if v:
+            valid_priorities = ['low', 'medium', 'high', 'critical']
+            if v not in valid_priorities:
+                raise ValueError(f'Priority must be one of: {", ".join(valid_priorities)}')
+        return v
+    
+    @validator('summary')
+    def summary_must_not_be_empty(cls, v):
+        if v is not None and (not v or not v.strip()):
+            raise ValueError('Summary cannot be empty')
+        return v.strip() if v else v
+
+class TicketUpdateResponse(BaseModel):
+    """Response model for ticket updates."""
+    status: str
+    message: str
+    ticket: TicketModel
+
 class ClerkUser(BaseModel):
     """User information from Clerk authentication."""
     user_id: str
@@ -328,6 +364,56 @@ def require_auth_decorator(func):
         return await func(request, *args, **kwargs)
     
     return wrapper
+
+
+async def check_ticket_ownership(ticket_id: int, user: ClerkUser, env) -> Optional[Dict[str, Any]]:
+    """
+    Check if the authenticated user has permission to update the specified ticket.
+    Returns ticket data if user has permission, None otherwise.
+    
+    Permission rules:
+    - User can update tickets they are the owner of
+    - User can update tickets they are the reporter of (created)
+    """
+    try:
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT id, summary, status, priority, reporter, owner, time, description
+                FROM ticket 
+                WHERE id = %s
+            """, (ticket_id,))
+            
+            ticket_row = cursor.fetchone()
+            if not ticket_row:
+                return None
+            
+            # Extract ticket data
+            ticket_data = {
+                'id': ticket_row[0],
+                'summary': ticket_row[1],
+                'status': ticket_row[2],
+                'priority': ticket_row[3],
+                'reporter': ticket_row[4],
+                'owner': ticket_row[5],
+                'time': ticket_row[6],
+                'description': ticket_row[7] if len(ticket_row) > 7 else ""
+            }
+            
+            # Check ownership permissions
+            user_can_update = (
+                ticket_data['owner'] == user.email or 
+                ticket_data['reporter'] == user.email
+            )
+            
+            if user_can_update:
+                return ticket_data
+            else:
+                return None
+                
+    except Exception as e:
+        logger.error(f"Error checking ticket ownership: {str(e)}")
+        return None
 
 
 @asynccontextmanager
@@ -841,6 +927,244 @@ async def create_ticket_trac_test(ticket_data: TicketCreateRequest):
     except Exception as e:
         import traceback
         return {"status": "error", "error": str(e), "error_type": type(e).__name__, "traceback": traceback.format_exc()}
+
+
+@app.patch(
+    "/api/tickets/{ticket_id}",
+    response_model=TicketUpdateResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update Ticket Status",
+    description="Update ticket status and other properties in the Trac database. Users can only update tickets they own or created.",
+    responses={
+        200: {
+            "description": "Ticket updated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "Ticket updated successfully",
+                        "ticket": {
+                            "id": 1,
+                            "summary": "Updated ticket",
+                            "status": "assigned",
+                            "priority": "high",
+                            "reporter": "user@example.com",
+                            "owner": "user@example.com",
+                            "created": 1640995200
+                        }
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid input data"},
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden - user doesn't own this ticket"},
+        404: {"description": "Ticket not found"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Tickets"]
+)
+async def update_ticket(
+    ticket_id: int,
+    update_data: TicketUpdateRequest,
+    user: ClerkUser = Depends(require_auth)
+) -> TicketUpdateResponse:
+    """
+    **Update Ticket Status and Properties**
+    
+    This endpoint updates ticket properties in the legacy Trac database for authenticated users.
+    Users can only update tickets they own (assigned to) or created (reporter).
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Ownership Rules:**
+    - Users can update tickets they are the `owner` of (assigned to)
+    - Users can update tickets they are the `reporter` of (created)
+    - Returns 403 Forbidden if user doesn't have permission
+    
+    **Request Body (all fields optional):**
+    - `status`: New status (new, assigned, accepted, closed, reopened)
+    - `priority`: New priority (low, medium, high, critical)
+    - `owner`: New owner/assignee email
+    - `summary`: Updated summary/title
+    - `description`: Updated description
+    
+    **Returns:**
+    - Updated ticket details
+    - Success status and message
+    
+    **Example Usage:**
+    ```
+    curl -X PATCH -H "Authorization: Bearer <token>" \
+         -H "Content-Type: application/json" \
+         -d '{"status":"assigned","priority":"high"}' \
+         http://localhost:8000/api/tickets/1
+    ```
+    """
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Check if ticket exists and user has permission to update it
+        ticket_data = await check_ticket_ownership(ticket_id, user, env)
+        
+        if ticket_data is None:
+            # First check if ticket exists at all
+            with env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT id FROM ticket WHERE id = %s", (ticket_id,))
+                if cursor.fetchone() is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Ticket {ticket_id} not found"
+                    )
+            
+            # Ticket exists but user doesn't have permission
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You can only update tickets you own or created."
+            )
+        
+        # Build update query dynamically based on provided fields
+        update_fields = []
+        update_values = []
+        
+        if update_data.status is not None:
+            update_fields.append("status = %s")
+            update_values.append(update_data.status)
+        
+        if update_data.priority is not None:
+            update_fields.append("priority = %s")
+            update_values.append(update_data.priority)
+        
+        if update_data.owner is not None:
+            update_fields.append("owner = %s")
+            update_values.append(update_data.owner)
+        
+        if update_data.summary is not None:
+            update_fields.append("summary = %s")
+            update_values.append(update_data.summary)
+        
+        if update_data.description is not None:
+            update_fields.append("description = %s")
+            update_values.append(update_data.description)
+        
+        # Always update changetime
+        current_time = int(time.time() * 1000000)
+        update_fields.append("changetime = %s")
+        update_values.append(current_time)
+        
+        # Add ticket_id for WHERE clause
+        update_values.append(ticket_id)
+        
+        if not update_fields:
+            # No fields to update (except changetime)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid fields provided for update"
+            )
+        
+        # Update ticket in database
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            
+            update_query = f"""
+                UPDATE ticket 
+                SET {', '.join(update_fields)}
+                WHERE id = %s
+            """
+            
+            cursor.execute(update_query, update_values)
+            
+            # Fetch updated ticket data
+            cursor.execute("""
+                SELECT id, summary, status, priority, reporter, owner, time
+                FROM ticket 
+                WHERE id = %s
+            """, (ticket_id,))
+            
+            updated_row = cursor.fetchone()
+            if not updated_row:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to retrieve updated ticket"
+                )
+            
+            # Handle timestamp conversion
+            raw_timestamp = updated_row[6]
+            created_timestamp = raw_timestamp
+            
+            if raw_timestamp is not None:
+                try:
+                    timestamp_int = int(raw_timestamp)
+                    if timestamp_int > 9999999999:  # Microseconds to seconds
+                        created_timestamp = timestamp_int // 1000000
+                    else:
+                        created_timestamp = timestamp_int
+                        
+                    # Validate timestamp is reasonable
+                    if created_timestamp < 946684800 or created_timestamp > 2524608000:
+                        logger.warning(f"Invalid timestamp {created_timestamp} for ticket {ticket_id}")
+                        created_timestamp = int(time.time())
+                        
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to parse timestamp {raw_timestamp} for ticket {ticket_id}: {e}")
+                    created_timestamp = int(time.time())
+            else:
+                created_timestamp = int(time.time())
+            
+            updated_ticket = TicketModel(
+                id=updated_row[0],
+                summary=updated_row[1],
+                status=updated_row[2],
+                priority=updated_row[3],
+                reporter=updated_row[4],
+                owner=updated_row[5],
+                created=created_timestamp
+            )
+        
+        logger.info(f"Updated ticket {ticket_id} for user {user.email}")
+        
+        return TicketUpdateResponse(
+            status="success",
+            message="Ticket updated successfully",
+            ticket=updated_ticket
+        )
+        
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to update ticket {ticket_id}: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while updating ticket"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
 
 
 # SPA Fallback - catch all non-API routes and serve index.html
