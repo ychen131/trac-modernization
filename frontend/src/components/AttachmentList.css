@@ -30,30 +30,13 @@
 
 /* Loading State */
 .attachment-loading {
-  padding: 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  color: var(--text-secondary, #718096);
-  font-size: 0.875rem;
-}
-
-.loading-spinner {
-  font-size: 1.25rem;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  /* Uses .loading-container from design system */
+  padding: var(--space-8);
 }
 
 /* No Attachments State */
 .no-attachments {
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-secondary, #718096);
+  /* Uses .empty-state from design system */
 }
 
 .no-attachments-icon {

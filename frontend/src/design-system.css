@@ -48,6 +48,12 @@
   --bg-tertiary: var(--color-gray-50);
   --bg-overlay: rgba(0, 0, 0, 0.6);
   
+  /* Semantic Background Colors */
+  --bg-success: #f0fdf4;
+  --bg-warning: #fffbeb;
+  --bg-danger: #fef2f2;
+  --bg-info: #eff6ff;
+  
   /* Text Colors */
   --text-primary: var(--color-gray-900);
   --text-secondary: var(--color-gray-600);
@@ -60,6 +66,8 @@
   --border-focus: var(--color-primary);
   --border-danger: var(--color-danger);
   --border-success: var(--color-success);
+  --border-warning: var(--color-warning);
+  --border-info: var(--color-info);
   
   /* ===== TYPOGRAPHY ===== */
   
@@ -148,6 +156,12 @@
     --bg-secondary: #161b22;
     --bg-tertiary: #21262d;
     --bg-overlay: rgba(0, 0, 0, 0.8);
+    
+    /* Semantic Background Colors */
+    --bg-success: #0f1419;
+    --bg-warning: #1c1810;
+    --bg-danger: #1a1313;
+    --bg-info: #0d1117;
     
     /* Text Colors */
     --text-primary: #f0f6fc;
@@ -347,6 +361,179 @@
 .card-header {
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-primary);
+}
+
+/* ===== LOADING STATES ===== */
+
+/* Loading spinner */
+.loading-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--border-primary);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+.loading-spinner.sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 1.5px;
+}
+
+.loading-spinner.lg {
+  width: 2rem;
+  height: 2rem;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Loading skeleton */
+.loading-skeleton {
+  background: linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-tertiary) 50%, var(--bg-secondary) 100%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+  border-radius: var(--radius-base);
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-text {
+  height: 1rem;
+  margin-bottom: var(--space-2);
+}
+
+.skeleton-text.sm {
+  height: 0.75rem;
+}
+
+.skeleton-text.lg {
+  height: 1.25rem;
+}
+
+.skeleton-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+}
+
+.skeleton-button {
+  height: 2.5rem;
+  width: 5rem;
+  border-radius: var(--radius-base);
+}
+
+/* Loading states for components */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-overlay);
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.loading-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ===== ERROR STATES ===== */
+
+/* Error messages */
+.error-message {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.error-banner {
+  background: var(--bg-danger);
+  border: 1px solid var(--border-danger);
+  color: var(--color-danger);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-base);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.error-banner.warning {
+  background: var(--bg-warning);
+  border-color: var(--border-warning);
+  color: var(--color-warning);
+}
+
+.error-banner.info {
+  background: var(--bg-info);
+  border-color: var(--border-info);
+  color: var(--color-info);
+}
+
+.error-banner.success {
+  background: var(--bg-success);
+  border-color: var(--border-success);
+  color: var(--color-success);
+}
+
+/* Error icons */
+.error-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Empty states */
+.empty-state {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.empty-state-description {
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-4);
+}
+
+.empty-state-action {
+  margin-top: var(--space-4);
 }
 
 .card-body {
