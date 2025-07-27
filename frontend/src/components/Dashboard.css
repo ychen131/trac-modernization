@@ -1,0 +1,449 @@
+/* Personal Dashboard Styles */
+.dashboard-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #f7fafc;
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.dashboard-header h2 {
+  color: #2d3748;
+  margin-bottom: 8px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.dashboard-header p {
+  color: #718096;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Main Dashboard Grid Layout */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+/* Welcome/Hero Section - Full Width */
+.dashboard-welcome {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #3182ce 0%, #2c5aa0 100%);
+  color: white;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-welcome::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: rotate(45deg);
+}
+
+.welcome-content {
+  position: relative;
+  z-index: 1;
+}
+
+.welcome-greeting {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.welcome-subtitle {
+  font-size: 1rem;
+  opacity: 0.9;
+  margin-bottom: 16px;
+}
+
+.welcome-stats {
+  display: flex;
+  gap: 32px;
+  margin-top: 20px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  display: block;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-icon {
+  font-size: 1.5rem;
+}
+
+.card-action {
+  color: #3182ce;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.card-action:hover {
+  background-color: #ebf8ff;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+/* Recent Activity Card */
+.activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f7fafc;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.activity-icon.created {
+  background: #d6f5d6;
+  color: #22543d;
+}
+
+.activity-icon.updated {
+  background: #bee3f8;
+  color: #2a4365;
+}
+
+.activity-icon.completed {
+  background: #fbb6ce;
+  color: #702459;
+}
+
+.activity-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-title {
+  font-weight: 500;
+  color: #2d3748;
+  margin: 0 0 4px 0;
+  font-size: 0.875rem;
+}
+
+.activity-meta {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: #a0aec0;
+  flex-shrink: 0;
+}
+
+/* Progress Stats Card */
+.progress-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.progress-item {
+  text-align: center;
+  padding: 16px;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.progress-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #3182ce;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.progress-label {
+  font-size: 0.875rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 16px 0 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce 0%, #63b3ed 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+
+
+/* Empty States */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: #718096;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  color: #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.empty-description {
+  font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 16px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dashboard-welcome {
+    padding: 24px;
+    border-radius: 12px;
+  }
+
+  .welcome-greeting {
+    font-size: 1.25rem;
+  }
+
+  .welcome-stats {
+    gap: 24px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+
+  .progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+
+  .card-header {
+    padding: 16px 16px 12px;
+  }
+
+  .card-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-stats {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .dashboard-header h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .dashboard-container {
+    background: #1a202c;
+  }
+
+  .dashboard-card {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+  }
+
+  .card-header {
+    border-bottom-color: #4a5568;
+  }
+
+  .card-title {
+    color: #f7fafc;
+  }
+
+  .activity-title {
+    color: #f7fafc;
+  }
+
+  .activity-meta {
+    color: #a0aec0;
+  }
+
+  .progress-item {
+    background: #4a5568;
+  }
+
+  .empty-state {
+    color: #a0aec0;
+  }
+
+  .empty-icon {
+    color: #4a5568;
+  }
+
+  .dashboard-header h2 {
+    color: #f7fafc;
+  }
+
+  .dashboard-header p {
+    color: #a0aec0;
+  }
+}
+
+/* Loading States */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading-skeleton {
+    background: linear-gradient(90deg, #4a5568 25%, #2d3748 50%, #4a5568 75%);
+    background-size: 200% 100%;
+  }
+}
+
+/* Animation and Transitions */
+.dashboard-card {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.dashboard-card:nth-child(1) { animation-delay: 0ms; }
+.dashboard-card:nth-child(2) { animation-delay: 100ms; }
+.dashboard-card:nth-child(3) { animation-delay: 200ms; }
+.dashboard-card:nth-child(4) { animation-delay: 300ms; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for keyboard navigation */
+.card-action:focus-visible {
+  outline: 2px solid #3182ce;
+  outline-offset: 2px;
+} 
