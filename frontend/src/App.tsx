@@ -49,41 +49,86 @@ const App: React.FC<AppProps> = () => {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>🎯 HobbyTrack</h1>
-        
-        {!isSignedIn && (
-          <div className="auth-section">
-            <h2>Welcome! Please sign in to continue</h2>
-            <div className="auth-buttons">
-              <SignInButton mode="modal">
-                <button className="auth-button signin">Sign In</button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="auth-button signup">Sign Up</button>
-              </SignUpButton>
-            </div>
-          </div>
-        )}
-        
-        {isSignedIn && (
+      {/* Header for authenticated users */}
+      {isSignedIn && (
+        <header className="App-header">
+          <h1>🎯 HobbyTrack</h1>
           <div className="user-section">
-            <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
+            <span>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</span>
             <UserButton afterSignOutUrl="/" />
           </div>
-        )}
-      </header>
+        </header>
+      )}
+
+      {/* Landing page for non-authenticated users */}
+      {!isSignedIn && (
+        <div className="landing-page">
+          <header className="landing-header">
+            <div className="landing-nav">
+              <h1>🎯 HobbyTrack</h1>
+              <div className="api-status-badge">{apiStatus}</div>
+            </div>
+          </header>
+          
+          <main className="landing-main">
+            <div className="hero-section">
+              <div className="hero-content">
+                <h1 className="hero-title">Modern project tracking for hobbyists</h1>
+                <p className="hero-subtitle">
+                  Transform your hobby projects with visual Kanban boards, file uploads, 
+                  and progress tracking. Built on the powerful Trac foundation with a modern, 
+                  user-friendly interface.
+                </p>
+                
+                <div className="hero-features">
+                  <div className="feature">
+                    <span className="feature-icon">📋</span>
+                    <span>Visual Kanban Boards</span>
+                  </div>
+                  <div className="feature">
+                    <span className="feature-icon">📁</span>
+                    <span>File Attachments</span>
+                  </div>
+                  <div className="feature">
+                    <span className="feature-icon">🎯</span>
+                    <span>Progress Tracking</span>
+                  </div>
+                </div>
+
+                <div className="auth-card">
+                  <h2>Get started with your projects</h2>
+                  <p>Sign in to create and manage your hobby projects</p>
+                  
+                  <div className="auth-buttons">
+                    <SignInButton mode="modal">
+                      <button className="auth-button primary">Sign In</button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <button className="auth-button secondary">Sign Up</button>
+                    </SignUpButton>
+                  </div>
+                  
+                  <div className="auth-providers">
+                    <p>Quick sign-in options available</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      )}
       
-      <main>
-        {isSignedIn && (
+      {/* Main app for authenticated users */}
+      {isSignedIn && (
+        <main>
           <ErrorBoundary>
             <div className="project-section">
               <ProjectSelector />
             </div>
             <KanbanBoard />
           </ErrorBoundary>
-        )}
-      </main>
+        </main>
+      )}
     </div>
   );
 };
