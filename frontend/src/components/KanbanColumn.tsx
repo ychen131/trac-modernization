@@ -222,20 +222,7 @@ export function KanbanColumn({
       )}
 
       {/* Column Status Indicators */}
-      {(isAtMaxCapacity || !canAddTasks) && (
-        <div className="column-status">
-          {isAtMaxCapacity && (
-            <span className="status-indicator warning">
-              ⚠️ At capacity ({column.maxTasks} tasks)
-            </span>
-          )}
-          {column.allowNewTasks === false && (
-            <span className="status-indicator info">
-              🔒 New tasks disabled
-            </span>
-          )}
-        </div>
-      )}
+
     </div>
   );
 } 

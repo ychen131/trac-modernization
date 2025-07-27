@@ -18,6 +18,7 @@ import { TicketCreateForm } from './TicketCreateForm';
 import { FileUpload, type AttachmentData } from './FileUpload';
 import { AttachmentList } from './AttachmentList';
 import './KanbanBoard.css';
+import './TicketCreateForm.css';
 
 // Convert KanbanTask to Task interface for compatibility
 const convertKanbanTaskToTask = (kanbanTask: KanbanTask): Task => {
@@ -156,7 +157,7 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="edit-ticket-form">
+    <form onSubmit={handleSubmit} className="ticket-form">
       {/* Upload Status Messages */}
       {uploadSuccess && (
         <div className="upload-status success">
@@ -185,10 +186,11 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
       )}
 
       <div className="form-group">
-        <label htmlFor="edit-title">Title:</label>
+        <label htmlFor="edit-title" className="form-label required">Title:</label>
         <input
           id="edit-title"
           type="text"
+          className="form-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
@@ -197,9 +199,10 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
       </div>
 
       <div className="form-group">
-        <label htmlFor="edit-description">Description:</label>
+        <label htmlFor="edit-description" className="form-label">Description:</label>
         <textarea
           id="edit-description"
+          className="form-textarea"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={4}
@@ -208,9 +211,10 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
       </div>
 
       <div className="form-group">
-        <label htmlFor="edit-priority">Priority:</label>
+        <label htmlFor="edit-priority" className="form-label">Priority:</label>
         <select
           id="edit-priority"
+          className="form-select"
           value={priority}
           onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
         >
@@ -241,10 +245,10 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
       </div>
 
       <div className="form-actions">
-        <button type="button" onClick={onCancel} disabled={isSubmitting}>
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </button>
-        <button type="submit" disabled={isSubmitting}>
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
           {isSubmitting ? 'Saving...' : 'Save Changes'}
         </button>
       </div>

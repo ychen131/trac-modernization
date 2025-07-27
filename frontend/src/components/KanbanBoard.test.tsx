@@ -398,16 +398,7 @@ describe('KanbanBoard Integration Tests', () => {
       expect(reviewColumn?.querySelector('.capacity-indicator')).toBeInTheDocument();
     });
 
-    it('should disable new tasks for Done column', async () => {
-      render(<KanbanBoard />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Setup authentication')).toBeInTheDocument();
-      });
 
-      // Done column should not allow new tasks
-      expect(screen.getByText('🔒 New tasks disabled')).toBeInTheDocument();
-    });
   });
 
   describe('Status Mapping', () => {

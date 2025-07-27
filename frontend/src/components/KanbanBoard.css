@@ -575,69 +575,11 @@
   color: var(--text-primary);
 }
 
-/* Edit Form Styles */
-.edit-ticket-form {
-  padding: var(--space-5);
-}
 
-.edit-ticket-form .form-group {
-  margin-bottom: 1rem;
-}
 
-.edit-ticket-form label {
-  display: block;
-  margin-bottom: var(--space-2);
-  color: var(--text-primary);
-  font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-sm);
-}
 
-.edit-ticket-form input,
-.edit-ticket-form textarea,
-.edit-ticket-form select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
 
-.edit-ticket-form input:focus,
-.edit-ticket-form textarea:focus,
-.edit-ticket-form select:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--color-primary-shadow);
-}
-
-.edit-ticket-form textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-/* Form actions buttons inherit from design system */
-.form-actions button {
-  /* Base button styles applied via .btn class in components */
-}
-
-.form-actions button[type="button"] {
-  /* Secondary button styles applied via .btn-secondary class in components */
-}
-
-.form-actions button[type="submit"] {
-  /* Primary button styles applied via .btn-primary class in components */
-} 
+ 
 
 /* Upload Status Messages */
 .upload-status {

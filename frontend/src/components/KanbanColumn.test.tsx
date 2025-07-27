@@ -387,11 +387,7 @@ describe('KanbanColumn Component', () => {
       expect(screen.getByText('🚫 Max capacity reached')).toBeInTheDocument();
     });
 
-    it('should show warning status when at capacity', () => {
-      renderKanbanColumn({ column: mockColumnAtCapacity });
-      
-      expect(screen.getByText('⚠️ At capacity (2 tasks)')).toBeInTheDocument();
-    });
+
 
     it('should use red color for capacity indicator when at limit', () => {
       renderKanbanColumn({ column: mockColumnAtCapacity });
@@ -408,29 +404,7 @@ describe('KanbanColumn Component', () => {
     });
   });
 
-  describe('Permission Controls', () => {
-    it('should disable new tasks when allowNewTasks is false', () => {
-      const restrictedColumn = { ...mockColumn, allowNewTasks: false };
-      renderKanbanColumn({ 
-        column: restrictedColumn,
-        onAddTask: mockOnAddTask 
-      });
-      
-      expect(screen.queryByText('+ Add task')).not.toBeInTheDocument();
-      expect(screen.getByText('🔒 New tasks disabled')).toBeInTheDocument();
-    });
 
-    it('should show both capacity and permission warnings', () => {
-      const restrictedFullColumn = { 
-        ...mockColumnAtCapacity, 
-        allowNewTasks: false 
-      };
-      renderKanbanColumn({ column: restrictedFullColumn });
-      
-      expect(screen.getByText('⚠️ At capacity (2 tasks)')).toBeInTheDocument();
-      expect(screen.getByText('🔒 New tasks disabled')).toBeInTheDocument();
-    });
-  });
 
   describe('Task Interaction Forwarding', () => {
     it('should forward task edit calls', () => {

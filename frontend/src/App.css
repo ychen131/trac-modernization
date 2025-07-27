@@ -4,19 +4,22 @@
 
 .App-header {
   background-color: #282c34;
-  padding: 20px;
+  padding: 15px 30px;
   color: white;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  justify-content: space-between;
+  font-size: 16px;
   transition: background-color 0.3s ease;
+  min-height: 60px;
 }
 
 .App-header h1 {
-  margin: 0 0 10px 0;
+  margin: 0;
   color: #61dafb;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .App-header p {
@@ -36,9 +39,9 @@
 }
 
 .project-section {
-  margin: 20px 0;
+  margin: 0 0 20px 0;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
 }
 
@@ -100,16 +103,16 @@
 /* User Section Styles */
 .user-section {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 15px;
-  margin: 20px 0;
+  margin: 0;
 }
 
 .user-section h2 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 300;
+  font-size: 18px;
+  font-weight: 400;
   color: #61dafb;
 }
 
@@ -191,5 +194,24 @@ main {
   
   .auth-button {
     width: 100%;
+  }
+  
+  .App-header {
+    padding: 10px 15px;
+    flex-direction: column;
+    gap: 10px;
+    min-height: auto;
+  }
+  
+  .user-section {
+    justify-content: center;
+  }
+  
+  .user-section h2 {
+    font-size: 16px;
+  }
+  
+  .App-header h1 {
+    font-size: 20px;
   }
 } 

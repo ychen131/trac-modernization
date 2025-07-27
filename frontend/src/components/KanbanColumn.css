@@ -282,33 +282,7 @@
   opacity: 0.6;
 }
 
-/* Column Status */
-.column-status {
-  padding: 8px 16px;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
-.status-indicator {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.status-indicator.warning {
-  background: #fed7d7;
-  color: #c53030;
-}
-
-.status-indicator.info {
-  background: #bee3f8;
-  color: #2b6cb0;
-}
 
 /* Responsive Design */
 @media (max-width: 1024px) {

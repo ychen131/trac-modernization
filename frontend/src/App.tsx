@@ -51,14 +51,6 @@ const App: React.FC<AppProps> = () => {
     <div className="App">
       <header className="App-header">
         <h1>🎯 HobbyTrack</h1>
-        <p>Modern project tracking for hobbyists</p>
-        
-        {/* Debug info showing hook values */}
-        <div className="auth-debug">
-          Auth Status: {isSignedIn ? 'Signed In' : 'Signed Out'} | 
-          User: {user?.firstName || 'None'} | 
-          Loaded: {isLoaded ? 'Yes' : 'No'}
-        </div>
         
         {!isSignedIn && (
           <div className="auth-section">
@@ -75,24 +67,19 @@ const App: React.FC<AppProps> = () => {
         )}
         
         {isSignedIn && (
-          <>
-            <div className="user-section">
-              <UserButton afterSignOutUrl="/" />
-              <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
-            </div>
-            <div className="project-section">
-              <ProjectSelector />
-            </div>
-            <div className="api-status">
-              {apiStatus}
-            </div>
-          </>
+          <div className="user-section">
+            <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
+            <UserButton afterSignOutUrl="/" />
+          </div>
         )}
       </header>
       
       <main>
         {isSignedIn && (
           <ErrorBoundary>
+            <div className="project-section">
+              <ProjectSelector />
+            </div>
             <KanbanBoard />
           </ErrorBoundary>
         )}
