@@ -6,17 +6,39 @@ from typing import Dict, Any, Optional
 from fastapi import HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwk
+from jwt import PyJWKClient
 
 from . import schemas
 
 logger = logging.getLogger(__name__)
 
 # Clerk configuration
-CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
-CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "")
+def get_clerk_config():
+    """Get Clerk configuration from environment variables."""
+    return {
+        "secret_key": os.getenv("CLERK_SECRET_KEY", ""),
+        "jwks_url": os.getenv("CLERK_JWKS_URL", ""),
+        "publishable_key": os.getenv("CLERK_PUBLISHABLE_KEY", "")
+    }
 
-# Development mode check
-DEVELOPMENT_MODE = not all([CLERK_SECRET_KEY, CLERK_JWKS_URL])
+# Global variable to store the JWKS client
+_jwks_client = None
+
+
+def get_jwks_client():
+    """Get or create the JWKS client lazily."""
+    global _jwks_client
+    if _jwks_client is None:
+        config = get_clerk_config()
+        if config["jwks_url"]:
+            _jwks_client = PyJWKClient(config["jwks_url"])
+    return _jwks_client
+
+
+def get_development_mode():
+    """Check if the application is in development mode."""
+    config = get_clerk_config()
+    return not all([config["secret_key"], config["jwks_url"]])
 
 # Security scheme for authentication
 security = HTTPBearer(auto_error=False)
@@ -30,45 +52,9 @@ class AuthenticationError(Exception):
     pass
 
 
-def get_jwks():
-    """Fetch JWKS from Clerk's endpoint with caching."""
-    global _jwks_cache
-    
-    if _jwks_cache is None and CLERK_JWKS_URL:
-        try:
-            response = requests.get(CLERK_JWKS_URL, timeout=10)
-            response.raise_for_status()
-            _jwks_cache = response.json()
-            logger.info("Successfully fetched JWKS from Clerk")
-        except Exception as e:
-            logger.error(f"Failed to fetch JWKS: {str(e)}")
-            raise HTTPException(
-                status_code=503,
-                detail="Authentication service unavailable"
-            )
-    
-    return _jwks_cache
-
-
-def get_public_key(kid: str):
-    """Get public key for JWT verification."""
-    jwks = get_jwks()
-    if not jwks:
-        return None
-    
-    for key in jwks.get('keys', []):
-        if key.get('kid') == kid:
-            return jwk.construct(key)
-    
-    raise HTTPException(
-        status_code=401,
-        detail="Invalid token - key not found"
-    )
-
-
 def decode_clerk_token(token: str) -> Dict[str, Any]:
     """Decode and verify Clerk JWT token."""
-    if DEVELOPMENT_MODE:
+    if get_development_mode():
         if token == "dev_test_token_123":
             return {
                 "sub": "dev_user_123",
@@ -96,27 +82,19 @@ def decode_clerk_token(token: str) -> Dict[str, Any]:
                 detail="Invalid token"
             )
     
+    if not get_jwks_client():
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service misconfigured"
+        )
+
     try:
-        headers = jwt.get_unverified_header(token)
-        kid = headers.get('kid')
-        
-        if not kid:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid token - missing key ID"
-            )
-        
-        public_key = get_public_key(kid)
-        if not public_key:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid token - cannot verify signature"
-            )
+        signing_key = get_jwks_client().get_signing_key_from_jwt(token)
         
         decoded = jwt.decode(
             token,
-            public_key.to_pem().decode('utf-8'),
-            algorithms=['RS256'],
+            signing_key.key,
+            algorithms=["RS256"],
             options={
                 "verify_exp": True,
                 "verify_nbf": True,
@@ -138,8 +116,13 @@ def decode_clerk_token(token: str) -> Dict[str, Any]:
             status_code=401,
             detail="Invalid token"
         )
+    except HTTPException as e:
+        logger.error(f"Token verification failed with HTTPException: {e.detail}")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     except Exception as e:
-        logger.error(f"Token verification failed: {str(e)}")
+        import traceback
+        logger.error(f"Token verification failed with an unexpected error: {type(e).__name__} - {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=401,
             detail="Authentication failed"

@@ -1,28 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from trac.env import Environment
-import os
 
 from .. import schemas, security
 from ..crud import tickets as crud_tickets
-from ..main import project_root, check_ticket_ownership
+from ..core.dependencies import get_trac_env
 
 router = APIRouter()
-
-def get_trac_env():
-    if os.path.exists("/app/test-projects"):
-        trac_env_path = "/app/test-projects/my-drone-project"
-    else:
-        trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
-    return Environment(trac_env_path)
 
 @router.get(
     "/tickets",
     response_model=schemas.TicketsResponse,
     tags=["Tickets"]
 )
-async def get_tickets(user: schemas.ClerkUser = Depends(security.require_auth)):
-    env = get_trac_env()
+async def get_tickets(
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
+):
     tickets = crud_tickets.get_tickets_for_user(env, user)
     return schemas.TicketsResponse(
         status="success",
@@ -40,9 +34,9 @@ async def get_tickets(user: schemas.ClerkUser = Depends(security.require_auth)):
 )
 async def create_ticket(
     ticket_data: schemas.TicketCreateRequest,
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
     created_ticket = crud_tickets.create_new_ticket(env, ticket_data, user)
     return schemas.TicketCreateResponse(
         status="success",
@@ -58,10 +52,10 @@ async def create_ticket(
 async def update_ticket(
     ticket_id: int,
     update_data: schemas.TicketUpdateRequest,
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
-    ticket_data = await check_ticket_ownership(ticket_id, user, env)
+    ticket_data = await crud_tickets.check_ticket_ownership(env, ticket_id, user)
     
     if ticket_data is None:
         if crud_tickets.get_ticket_by_id(env, ticket_id) is None:
@@ -85,10 +79,10 @@ async def update_ticket(
 )
 async def delete_ticket(
     ticket_id: int,
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
-    ticket_data = await check_ticket_ownership(ticket_id, user, env)
+    ticket_data = await crud_tickets.check_ticket_ownership(env, ticket_id, user)
 
     if ticket_data is None:
         if crud_tickets.get_ticket_by_id(env, ticket_id) is None:

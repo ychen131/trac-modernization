@@ -7,6 +7,19 @@ from .. import schemas
 
 logger = logging.getLogger(__name__)
 
+
+async def check_ticket_ownership(env: Environment, ticket_id: int, user: schemas.ClerkUser) -> Optional[Dict[str, Any]]:
+    """Check if the user has permission to access the ticket."""
+    ticket = get_ticket_by_id(env, ticket_id)
+    if not ticket:
+        return None
+    
+    if ticket.get('owner') == user.email or ticket.get('reporter') == user.email:
+        return ticket
+    
+    return None
+
+
 def get_tickets_for_user(env: Environment, user: schemas.ClerkUser) -> List[Dict[str, Any]]:
     """Retrieve tickets for a given user from the Trac database."""
     with env.db_transaction as db:

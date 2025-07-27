@@ -9,16 +9,9 @@ import hashlib
 
 from .. import schemas, security
 from ..crud import attachments as crud_attachments, tickets as crud_tickets
-from ..main import project_root, check_ticket_ownership
+from ..core.dependencies import get_trac_env
 
 router = APIRouter()
-
-def get_trac_env():
-    if os.path.exists("/app/test-projects"):
-        trac_env_path = "/app/test-projects/my-drone-project"
-    else:
-        trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
-    return Environment(trac_env_path)
 
 @router.get(
     "/tickets/{ticket_id}/attachments",
@@ -27,10 +20,10 @@ def get_trac_env():
 )
 async def get_ticket_attachments(
     ticket_id: int,
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
-    ticket_data = await check_ticket_ownership(ticket_id, user, env)
+    ticket_data = await crud_tickets.check_ticket_ownership(env, ticket_id, user)
     
     if ticket_data is None:
         if crud_tickets.get_ticket_by_id(env, ticket_id) is None:
@@ -52,10 +45,10 @@ async def get_ticket_attachments(
 async def download_ticket_attachment(
     ticket_id: int,
     filename: str,
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
-    ticket_data = await check_ticket_ownership(ticket_id, user, env)
+    ticket_data = await crud_tickets.check_ticket_ownership(env, ticket_id, user)
     
     if ticket_data is None:
         if crud_tickets.get_ticket_by_id(env, ticket_id) is None:
@@ -115,9 +108,9 @@ async def upload_ticket_attachment(
     ticket_id: int,
     file: UploadFile = File(...),
     description: Optional[str] = "",
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
     # File validation
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
     ALLOWED_MIME_TYPES = {
@@ -134,7 +127,7 @@ async def upload_ticket_attachment(
     if not file.filename or not os.path.basename(file.filename).strip():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid filename")
 
-    ticket_data = await check_ticket_ownership(ticket_id, user, env)
+    ticket_data = await crud_tickets.check_ticket_ownership(env, ticket_id, user)
     if ticket_data is None:
         if crud_tickets.get_ticket_by_id(env, ticket_id) is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Ticket {ticket_id} not found")
@@ -161,10 +154,10 @@ async def upload_ticket_attachment(
 async def delete_ticket_attachment(
     ticket_id: int,
     filename: str,
-    user: schemas.ClerkUser = Depends(security.require_auth)
+    user: schemas.ClerkUser = Depends(security.require_auth),
+    env: Environment = Depends(get_trac_env)
 ):
-    env = get_trac_env()
-    ticket_data = await check_ticket_ownership(ticket_id, user, env)
+    ticket_data = await crud_tickets.check_ticket_ownership(env, ticket_id, user)
     
     if ticket_data is None:
         if crud_tickets.get_ticket_by_id(env, ticket_id) is None:

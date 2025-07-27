@@ -2,30 +2,32 @@
 HobbyTrack FastAPI Backend - Main Application
 """
 
-from fastapi import FastAPI, HTTPException, Depends, Request, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any
 import logging
 import os
 import sys
-import time
-import hashlib
-import shutil
-from pathlib import Path
 from dotenv import load_dotenv
-import urllib.parse
 
-from . import schemas, security
-from .crud import tickets as crud_tickets, attachments as crud_attachments
-from .routers import tickets as tickets_router, attachments as attachments_router
+# Calculate project root more reliably
+current_file = os.path.abspath(__file__)
+backend_dir = os.path.dirname(os.path.dirname(current_file))
+project_root = os.path.dirname(backend_dir)
 
 # Add the project root to Python path to import Trac modules
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+    
+# Now we can import Trac
+from trac.env import Environment
+
+from . import schemas, security
+from .routers import tickets as tickets_router, attachments as attachments_router
+from .core.config import project_root as config_project_root
 
 # Load environment variables from .env file in project root
 env_path = os.path.join(project_root, ".env")
@@ -35,15 +37,26 @@ load_dotenv(env_path)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info(f"Loading environment variables from: {env_path}")
+logger.info(f"Project root: {project_root}")
+logger.info(f"Python path: {sys.path}")
 
-# Clerk configuration
-CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown events."""
     # Startup
     logger.info("HobbyTrack API starting up...")
+    if os.path.exists("/app/test-projects"):
+        trac_env_path = "/app/test-projects/my-drone-project"
+    else:
+        trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+    
+    try:
+        app.state.trac_env = Environment(trac_env_path)
+    except Exception as e:
+        logger.error(f"Failed to initialize Trac environment: {e}")
+        app.state.trac_env = None
+
     yield
     # Shutdown
     logger.info("HobbyTrack API shutting down...")
@@ -100,13 +113,14 @@ async def health_check() -> Dict[str, str]:
 @app.get("/api/debug/mode")
 async def debug_mode():
     """Debug endpoint to check current mode and configuration"""
+    clerk_config = security.get_clerk_config()
     return {
-        "development_mode": security.DEVELOPMENT_MODE,
-        "clerk_secret_key_set": bool(os.getenv("CLERK_SECRET_KEY", "")),
-        "clerk_jwks_url_set": bool(os.getenv("CLERK_JWKS_URL", "")),
-        "clerk_publishable_key_set": bool(CLERK_PUBLISHABLE_KEY),
-        "clerk_secret_key_length": len(os.getenv("CLERK_SECRET_KEY", "")),
-        "clerk_jwks_url_value": os.getenv("CLERK_JWKS_URL", "not set")
+        "development_mode": security.get_development_mode(),
+        "clerk_secret_key_set": bool(clerk_config["secret_key"]),
+        "clerk_jwks_url_set": bool(clerk_config["jwks_url"]),
+        "clerk_publishable_key_set": bool(clerk_config["publishable_key"]),
+        "clerk_secret_key_length": len(clerk_config["secret_key"]),
+        "clerk_jwks_url_value": clerk_config["jwks_url"] or "not set"
     }
 
 
@@ -124,7 +138,7 @@ async def auth_status(user: schemas.ClerkUser = Depends(security.require_auth)) 
             "first_name": user.first_name,
             "last_name": user.last_name
         },
-        "mode": "development" if security.DEVELOPMENT_MODE else "production"
+        "mode": "development" if security.get_development_mode() else "production"
     }
 
 
