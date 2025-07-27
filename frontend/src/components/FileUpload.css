@@ -8,6 +8,17 @@
   background: var(--bg-color, #ffffff);
 }
 
+/* Loading State */
+.upload-loading {
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--text-secondary, #718096);
+  font-size: 0.875rem;
+}
+
 .file-upload-header {
   margin-bottom: 1rem;
 }

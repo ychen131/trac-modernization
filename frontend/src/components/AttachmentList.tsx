@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import './AttachmentList.css';
+import { useProjects } from '../hooks/useProjects';
 
 export interface Attachment {
   filename: string;
@@ -24,6 +25,7 @@ export function AttachmentList({
   refreshTrigger = 0
 }: AttachmentListProps) {
   const { getToken } = useAuth();
+  const { selectedProject, loading: projectsLoading } = useProjects();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -66,6 +68,12 @@ export function AttachmentList({
   const fetchAttachments = async () => {
     if (!ticketId) return;
     
+    // Don't try to fetch if projects are still loading or no project is selected yet
+    if (projectsLoading || !selectedProject?.id) {
+      console.log('Skipping attachment fetch - projects loading or no project selected yet');
+      return;
+    }
+    
     setLoading(true);
     try {
       const token = await getToken();
@@ -76,6 +84,7 @@ export function AttachmentList({
       const response = await fetch(`/api/tickets/${ticketId}/attachments`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'X-Project-Id': selectedProject.id,
         },
       });
 
@@ -95,6 +104,11 @@ export function AttachmentList({
   };
 
   const handleDownload = async (filename: string) => {
+    if (!selectedProject?.id) {
+      onError?.('No project selected. Please select a project to download attachments.');
+      return;
+    }
+
     try {
       const token = await getToken();
       if (!token) {
@@ -104,6 +118,7 @@ export function AttachmentList({
       const response = await fetch(`/api/tickets/${ticketId}/attachments/${encodeURIComponent(filename)}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'X-Project-Id': selectedProject.id,
         },
       });
 
@@ -131,6 +146,11 @@ export function AttachmentList({
   };
 
   const handleDelete = async (filename: string) => {
+    if (!selectedProject?.id) {
+      onError?.('No project selected. Please select a project to delete attachments.');
+      return;
+    }
+
     const confirmed = window.confirm(
       `Are you sure you want to delete "${filename}"?\n\nThis action cannot be undone.`
     );
@@ -148,6 +168,7 @@ export function AttachmentList({
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'X-Project-Id': selectedProject.id,
         },
       });
 
@@ -171,7 +192,35 @@ export function AttachmentList({
   // Fetch attachments on mount and when refreshTrigger changes
   useEffect(() => {
     fetchAttachments();
-  }, [ticketId, refreshTrigger]);
+  }, [ticketId, refreshTrigger, selectedProject?.id, projectsLoading]);
+
+  if (projectsLoading) {
+    return (
+      <div className="attachment-list">
+        <div className="attachment-list-header">
+          <h4>📎 Attachments</h4>
+        </div>
+        <div className="attachment-loading">
+          <div className="loading-spinner">⏳</div>
+          <span>Loading project...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedProject?.id) {
+    return (
+      <div className="attachment-list">
+        <div className="attachment-list-header">
+          <h4>📎 Attachments</h4>
+        </div>
+        <div className="attachment-loading">
+          <div className="loading-spinner">❗</div>
+          <span>Please select a project to view attachments</span>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

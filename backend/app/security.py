@@ -142,7 +142,8 @@ async def verify_clerk_token(credentials: Optional[HTTPAuthorizationCredentials]
         decoded = decode_clerk_token(token)
         
         user_id = decoded.get('sub', 'unknown')
-        email = decoded.get('email', 'unknown@example.com')
+        # Email is optional - we use Clerk user ID as the canonical identifier
+        email = decoded.get('email', '')
         first_name = decoded.get('given_name', decoded.get('first_name', 'User'))
         last_name = decoded.get('family_name', decoded.get('last_name', ''))
         

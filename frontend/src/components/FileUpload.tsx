@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import './FileUpload.css';
+import { useProjects } from '../hooks/useProjects';
 
 export interface AttachmentData {
   filename: string;
@@ -33,6 +34,7 @@ export function FileUpload({
   ]
 }: FileUploadProps) {
   const { getToken } = useAuth();
+  const { selectedProject, loading: projectsLoading } = useProjects();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
@@ -78,10 +80,15 @@ export function FileUpload({
         formData.append('description', description.trim());
       }
 
+      if (!selectedProject?.id) {
+        throw new Error('No project selected. Please select a project to upload files.');
+      }
+
       const response = await fetch(`/api/tickets/${ticketId}/attachments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'X-Project-Id': selectedProject.id,
         },
         body: formData,
       });
@@ -155,6 +162,34 @@ export function FileUpload({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
+
+  if (projectsLoading) {
+    return (
+      <div className="file-upload">
+        <div className="file-upload-header">
+          <h4>📎 Upload Attachment</h4>
+        </div>
+        <div className="upload-loading">
+          <div className="loading-spinner">⏳</div>
+          <span>Loading project...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedProject?.id) {
+    return (
+      <div className="file-upload">
+        <div className="file-upload-header">
+          <h4>📎 Upload Attachment</h4>
+        </div>
+        <div className="upload-loading">
+          <div className="loading-spinner">❗</div>
+          <span>Please select a project to upload files</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="file-upload">

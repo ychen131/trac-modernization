@@ -35,6 +35,9 @@ def initialize_trac_environment(project_id: str, project_name: str) -> Environme
         if os.path.exists(os.path.join(env_path, "conf", "trac.ini")):
             logger.info(f"Loading existing Trac environment for project {project_id} at {env_path}")
             env = Environment(env_path)
+            db_path = os.path.join(env_path, "db", "trac.db")
+            print(f"🗄️  PROJECT DATABASE PATH: {db_path}")
+            logger.info(f"Project database file: {db_path}")
         else:
             logger.info(f"Creating new Trac environment for project {project_id} at {env_path}")
             # Initialize a new Trac environment
@@ -46,8 +49,10 @@ def initialize_trac_environment(project_id: str, project_name: str) -> Environme
             
             # Load the newly created environment
             env = Environment(env_path)
-            
+            db_path = os.path.join(env_path, "db", "trac.db")
+            print(f"🗄️  NEW PROJECT DATABASE PATH: {db_path}")
             logger.info(f"Successfully created Trac environment for project {project_id}")
+            logger.info(f"New project database file: {db_path}")
         
         # Cache the environment
         _trac_env_cache[project_id] = env
@@ -76,6 +81,9 @@ def get_trac_env_for_project(project_id: str, project_name: Optional[str] = None
         if os.path.exists(os.path.join(env_path, "conf", "trac.ini")):
             # Environment exists, load it
             env = Environment(env_path)
+            db_path = os.path.join(env_path, "db", "trac.db")
+            print(f"🗄️  CACHED PROJECT DATABASE PATH: {db_path}")
+            logger.info(f"Cached project database file: {db_path}")
             _trac_env_cache[project_id] = env
             return env
         elif project_name:
@@ -96,15 +104,20 @@ def get_trac_env_for_project(project_id: str, project_name: Optional[str] = None
             detail="Failed to load project environment"
         )
 
-def get_trac_env(request: Request, x_project_id: Optional[str] = Header(None)) -> Environment:
+def get_trac_env(request: Request, x_project_id: str = Header(...)) -> Environment:
     """
     Get Trac environment based on project ID from header.
-    Falls back to default environment if no project ID provided.
+    Project ID is required - no fallback to avoid masking configuration errors.
     """
-    if x_project_id:
-        return get_trac_env_for_project(x_project_id)
+    print(f"🔍 REQUEST: X-Project-Id header = '{x_project_id}'")
     
-    # Fallback to the original hardcoded environment for backward compatibility
-    if not hasattr(request.app.state, 'trac_env') or request.app.state.trac_env is None:
-        raise HTTPException(status_code=503, detail="Trac environment not available")
-    return request.app.state.trac_env 
+    if not x_project_id or x_project_id.strip() == "":
+        raise HTTPException(
+            status_code=400, 
+            detail="X-Project-Id header is required but was empty"
+        )
+    
+    env = get_trac_env_for_project(x_project_id)
+    db_path = os.path.join(env.path, "db", "trac.db")
+    print(f"🎯 USING PROJECT DATABASE: {db_path}")
+    return env 

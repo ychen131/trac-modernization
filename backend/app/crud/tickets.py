@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 
 from trac.env import Environment
 from .. import schemas
+from ..security import get_development_mode
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +15,17 @@ async def check_ticket_ownership(env: Environment, ticket_id: int, user: schemas
     if not ticket:
         return None
     
-    if ticket.get('owner') == user.email or ticket.get('reporter') == user.email:
+    # In development mode, allow access to any ticket
+    if get_development_mode():
+        logger.info(f"Development mode: Allowing access to ticket {ticket_id} for user {user.user_id}")
         return ticket
     
+    # Check if user owns or reported the ticket (using Clerk user ID)
+    if ticket.get('owner') == user.user_id or ticket.get('reporter') == user.user_id:
+        logger.info(f"Access granted to ticket {ticket_id} for user {user.user_id}")
+        return ticket
+    
+    logger.info(f"Access denied to ticket {ticket_id} for user {user.user_id}. Owner is {ticket.get('owner')}, reporter is {ticket.get('reporter')}")
     return None
 
 
@@ -30,7 +39,7 @@ def get_tickets_for_user(env: Environment, user: schemas.ClerkUser) -> List[Dict
             WHERE owner = %s OR reporter = %s
             ORDER BY time DESC 
             LIMIT 20
-        """, (user.email, user.email))
+        """, (user.user_id, user.user_id))
         
         tickets = []
         for row in cursor.fetchall():
@@ -65,6 +74,7 @@ def get_tickets_for_user(env: Environment, user: schemas.ClerkUser) -> List[Dict
             })
     return tickets
 
+
 def create_new_ticket(env: Environment, ticket_data: schemas.TicketCreateRequest, user: schemas.ClerkUser) -> schemas.TicketModel:
     """Create a new ticket in the Trac database."""
     with env.db_transaction as db:
@@ -74,6 +84,7 @@ def create_new_ticket(env: Environment, ticket_data: schemas.TicketCreateRequest
         cursor.execute("""
             INSERT INTO ticket (type, time, changetime, component, priority, owner, reporter, status, summary, description)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """, (
             "task",
             current_time,
@@ -81,21 +92,25 @@ def create_new_ticket(env: Environment, ticket_data: schemas.TicketCreateRequest
             ticket_data.component,
             ticket_data.priority,
             "",
-            user.email,
+            user.user_id,  # Use Clerk user ID as reporter
             ticket_data.status,
             ticket_data.summary,
             ticket_data.description
         ))
         
-        ticket_id = cursor.lastrowid
-        logger.info(f"Created ticket {ticket_id} for user {user.email}")
+        result = cursor.fetchone()
+        if not result:
+            raise Exception(f"Failed to create ticket for user {user.user_id}")
+            
+        ticket_id = result[0]
+        logger.info(f"Created ticket {ticket_id} for user {user.user_id}")
     
     return schemas.TicketModel(
         id=ticket_id,
         summary=ticket_data.summary,
         status=ticket_data.status,
         priority=ticket_data.priority,
-        reporter=user.email,
+        reporter=user.user_id,
         owner="",
         created=current_time // 1000000
     )

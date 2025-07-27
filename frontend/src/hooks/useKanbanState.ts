@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useProjects } from './useProjects';
+import { formatUserForDisplay } from '../utils/userDisplay';
 
 // Import TicketFormData type for createTicket function
 export interface TicketFormData {
@@ -114,15 +115,15 @@ export function useKanbanState(): UseKanbanStateReturn {
       throw new Error('Authentication required. Please sign in.');
     }
 
+    if (!selectedProject?.id) {
+      throw new Error('No project selected. Please select a project to continue.');
+    }
+
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Project-Id': selectedProject.id,
     };
-
-    // Add project ID header if available
-    if (selectedProject?.id) {
-      headers['X-Project-Id'] = selectedProject.id;
-    }
 
     return headers;
   }, [getToken, selectedProject]);
@@ -131,9 +132,9 @@ export function useKanbanState(): UseKanbanStateReturn {
   const ticketToTask = useCallback((ticket: any): KanbanTask => ({
     id: ticket.id.toString(),
     title: ticket.summary,
-    description: `Reported by: ${ticket.reporter}`,
+    description: `Reported by: ${formatUserForDisplay(ticket.reporter)}`,
     priority: ticket.priority,
-    assignee: ticket.owner,
+    assignee: formatUserForDisplay(ticket.owner),
     status: ticket.status,
     reporter: ticket.reporter,
     created: ticket.created,

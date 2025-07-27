@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import './TaskCard.css';
+import { formatUserForDisplay } from '../utils/userDisplay';
 
 // Enhanced Task interface with more properties
 export interface Task {
@@ -198,7 +199,7 @@ export function TaskCard({
             {task.assignee && (
               <div className="meta-item">
                 <span className="meta-label">👤 Assignee:</span>
-                <span className="meta-value">{task.assignee}</span>
+                <span className="meta-value">{formatUserForDisplay(task.assignee)}</span>
               </div>
             )}
           </div>

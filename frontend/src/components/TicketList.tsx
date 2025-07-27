@@ -1,5 +1,7 @@
 import React from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { formatUserForDisplay } from '../utils/userDisplay';
+import { useProjects } from '../hooks/useProjects';
 
 interface Ticket {
   id: number;
@@ -27,6 +29,7 @@ interface TicketListState {
 const TicketList: React.FC<TicketListProps> = () => {
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
+  const { selectedProject } = useProjects();
   
   const [state, setState] = React.useState<TicketListState>({
     tickets: [],
@@ -52,6 +55,10 @@ const TicketList: React.FC<TicketListProps> = () => {
         // Get authentication token from Clerk
         const token = await getToken();
         
+        if (!selectedProject?.id) {
+          throw new Error('No project selected. Please select a project to view tickets.');
+        }
+        
         // Create AbortController for request timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -60,7 +67,8 @@ const TicketList: React.FC<TicketListProps> = () => {
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'X-Project-Id': selectedProject.id
           }
         });
         
@@ -129,7 +137,7 @@ const TicketList: React.FC<TicketListProps> = () => {
     };
 
     fetchTickets();
-  }, [isSignedIn, getToken]); // Re-fetch when authentication state changes
+  }, [isSignedIn, getToken, selectedProject?.id]); // Re-fetch when authentication state or project changes
 
   // Don't render anything if user is not signed in
   if (!isSignedIn) {
@@ -297,8 +305,8 @@ const TicketList: React.FC<TicketListProps> = () => {
                     borderTop: '1px solid #e0e0e0',
                     paddingTop: '10px'
                   }}>
-                    <div>Owner: {ticket.owner || 'Unassigned'}</div>
-                    <div>Reporter: {ticket.reporter}</div>
+                    <div>Owner: {formatUserForDisplay(ticket.owner)}</div>
+                    <div>Reporter: {formatUserForDisplay(ticket.reporter)}</div>
                   </div>
                 </div>
               ))}

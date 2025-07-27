@@ -46,20 +46,7 @@ async def lifespan(app: FastAPI):
     """Manage application startup and shutdown events."""
     # Startup
     logger.info("HobbyTrack API starting up...")
-    
-    # Initialize fallback Trac environment for demo/backward compatibility
-    # This environment is used when no project is selected via X-Project-Id header
-    if os.path.exists("/app/test-projects"):
-        trac_env_path = "/app/test-projects/my-drone-project"
-    else:
-        trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
-    
-    try:
-        app.state.trac_env = Environment(trac_env_path)
-        logger.info(f"Initialized fallback Trac environment at {trac_env_path}")
-    except Exception as e:
-        logger.error(f"Failed to initialize fallback Trac environment: {e}")
-        app.state.trac_env = None
+    logger.info("Project ID is now required for all requests - no fallback environment")
 
     yield
     # Shutdown
