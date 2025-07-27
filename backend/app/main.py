@@ -2,7 +2,7 @@
 HobbyTrack FastAPI Backend - Main Application
 """
 
-from fastapi import FastAPI, HTTPException, Depends, Request, status
+from fastapi import FastAPI, HTTPException, Depends, Request, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -15,6 +15,9 @@ import sys
 import time
 import jwt
 import requests
+import hashlib
+import shutil
+from pathlib import Path
 from pydantic import BaseModel, validator
 from dotenv import load_dotenv
 
@@ -165,6 +168,26 @@ class ClerkUser(BaseModel):
     email: str
     first_name: str
     last_name: str
+
+class AttachmentModel(BaseModel):
+    """Individual attachment model with validation."""
+    filename: str
+    size: int
+    description: Optional[str] = ""
+    author: str
+    uploaded: int
+    
+    @validator('filename')
+    def filename_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Filename cannot be empty')
+        return v.strip()
+
+class AttachmentCreateResponse(BaseModel):
+    """Response model for attachment creation."""
+    status: str
+    message: str
+    attachment: AttachmentModel
 
 
 class AuthenticationError(Exception):
@@ -1315,6 +1338,274 @@ async def delete_ticket(
         logger.error(f"Failed to delete ticket {ticket_id}: {str(e)}")
         # Don't expose internal error details in production
         error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while deleting ticket"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+
+
+@app.post(
+    "/api/tickets/{ticket_id}/attachments",
+    response_model=AttachmentCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload File Attachment to Ticket",
+    description="Upload a file attachment to a specific ticket. Users can only upload to tickets they own or created.",
+    responses={
+        201: {
+            "description": "File uploaded successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "File uploaded successfully",
+                        "attachment": {
+                            "filename": "document.pdf",
+                            "size": 1024576,
+                            "description": "Project documentation",
+                            "author": "user@example.com",
+                            "uploaded": 1640995200
+                        }
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid file or file too large"},
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden - user doesn't own this ticket"},
+        404: {"description": "Ticket not found"},
+        413: {"description": "File too large"},
+        415: {"description": "Unsupported file type"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Attachments"]
+)
+async def upload_ticket_attachment(
+    ticket_id: int,
+    file: UploadFile = File(...),
+    description: Optional[str] = "",
+    user: ClerkUser = Depends(require_auth)
+) -> AttachmentCreateResponse:
+    """
+    **Upload File Attachment to Ticket**
+    
+    This endpoint allows authenticated users to upload file attachments to tickets they own or created.
+    Files are stored using Trac's attachment system with proper validation and security.
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Ownership Rules:**
+    - Users can upload to tickets they are the `owner` of (assigned to)
+    - Users can upload to tickets they are the `reporter` of (created)
+    - Returns 403 Forbidden if user doesn't have permission
+    
+    **File Restrictions:**
+    - Maximum file size: 10MB
+    - Allowed file types: Images (PNG, JPG, JPEG, GIF), Documents (PDF, DOC, DOCX, TXT), Archives (ZIP)
+    - Filenames are sanitized and validated
+    
+    **Form Data:**
+    - `file`: Required file to upload
+    - `description`: Optional description of the attachment
+    
+    **Returns:**
+    - Uploaded file details and metadata
+    - Success status and message
+    
+    **Example Usage:**
+    ```
+    curl -X POST -H "Authorization: Bearer <token>" \
+         -F "file=@document.pdf" \
+         -F "description=Project specs" \
+         http://localhost:8000/api/tickets/1/attachments
+    ```
+    """
+    try:
+        # File validation constants
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        ALLOWED_MIME_TYPES = {
+            # Images
+            "image/png", "image/jpeg", "image/jpg", "image/gif",
+            # Documents  
+            "application/pdf", "text/plain", 
+            "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            # Archives
+            "application/zip", "application/x-zip-compressed"
+        }
+        
+        # Validate file size
+        if not file.size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File appears to be empty"
+            )
+        
+        if file.size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File size ({file.size} bytes) exceeds maximum allowed size ({MAX_FILE_SIZE} bytes)"
+            )
+        
+        # Validate file type
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"File type '{file.content_type}' is not allowed. Allowed types: {', '.join(ALLOWED_MIME_TYPES)}"
+            )
+        
+        # Validate filename
+        if not file.filename or not file.filename.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Filename cannot be empty"
+            )
+        
+        # Sanitize filename - remove path separators and other potentially dangerous characters
+        safe_filename = os.path.basename(file.filename).strip()
+        if not safe_filename or safe_filename in ['.', '..']:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid filename"
+            )
+        
+        # Import Trac environment
+        from trac.env import Environment
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Check if ticket exists and user has permission to upload to it
+        ticket_data = await check_ticket_ownership(ticket_id, user, env)
+        
+        if ticket_data is None:
+            # First check if ticket exists at all
+            with env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT id FROM ticket WHERE id = %s", (ticket_id,))
+                if cursor.fetchone() is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Ticket {ticket_id} not found"
+                    )
+            
+            # Ticket exists but user doesn't have permission
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You can only upload attachments to tickets you own or created."
+            )
+        
+        # Create attachment directory structure following Trac's pattern
+        # attachments_dir/ticket/hash[0:3]/hash/
+        attachments_dir = os.path.join(trac_env_path, "attachments")
+        ticket_dir = os.path.join(attachments_dir, "ticket")
+        
+        # Create SHA1 hash of ticket ID (as string)
+        ticket_id_str = str(ticket_id)
+        hash_obj = hashlib.sha1(ticket_id_str.encode('utf-8'))
+        hash_hex = hash_obj.hexdigest()
+        
+        # Create the full directory path
+        upload_dir = os.path.join(ticket_dir, hash_hex[0:3], hash_hex)
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Create hashed filename following Trac's pattern
+        filename_hash = hashlib.sha1(safe_filename.encode('utf-8')).hexdigest()
+        # Keep the original extension if it exists
+        if '.' in safe_filename:
+            extension = safe_filename.rsplit('.', 1)[1]
+            hashed_filename = f"{filename_hash}.{extension}"
+        else:
+            hashed_filename = filename_hash
+        
+        file_path = os.path.join(upload_dir, hashed_filename)
+        
+        # Get current timestamp in microseconds (Trac format)
+        current_time = int(time.time() * 1000000)
+        
+        # Save file and create database record atomically
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            
+            # Check if filename already exists for this ticket
+            cursor.execute("""
+                SELECT filename FROM attachment 
+                WHERE type = %s AND id = %s AND filename = %s
+            """, ("ticket", ticket_id_str, safe_filename))
+            
+            if cursor.fetchone():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"File '{safe_filename}' already exists for this ticket. Please use a different filename."
+                )
+            
+            # Save file to disk
+            try:
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+            except Exception as e:
+                logger.error(f"Failed to save file {file_path}: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to save uploaded file"
+                )
+            
+            # Insert attachment record into database
+            cursor.execute("""
+                INSERT INTO attachment (type, id, filename, size, time, description, author)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                "ticket",  # type (parent realm)
+                ticket_id_str,  # id (parent id)
+                safe_filename,  # filename (original filename)
+                file.size,  # size in bytes
+                current_time,  # time in microseconds
+                description or "",  # description
+                user.email  # author
+            ))
+            
+            logger.info(f"Uploaded attachment '{safe_filename}' to ticket {ticket_id} by user {user.email}")
+        
+        # Create response with attachment details
+        attachment = AttachmentModel(
+            filename=safe_filename,
+            size=file.size,
+            description=description or "",
+            author=user.email,
+            uploaded=current_time // 1000000  # Convert back to seconds for response
+        )
+        
+        return AttachmentCreateResponse(
+            status="success",
+            message="File uploaded successfully",
+            attachment=attachment
+        )
+        
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database or file system")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database or file system access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to upload attachment to ticket {ticket_id}: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while uploading file"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -13,8 +13,9 @@ import {
 // Removed useAuth import since authentication is now handled by the useKanbanState hook
 import { KanbanColumn, Column } from './KanbanColumn';
 import { Task } from './TaskCard'; // TaskCard component removed - not currently used
-import { useKanbanState, KanbanTask } from '../hooks/useKanbanState';
-import { TicketCreateForm, TicketFormData } from './TicketCreateForm';
+import { useKanbanState, KanbanTask, type TicketFormData } from '../hooks/useKanbanState';
+import { TicketCreateForm } from './TicketCreateForm';
+import { FileUpload, type AttachmentData } from './FileUpload';
 import './KanbanBoard.css';
 
 // Convert KanbanTask to Task interface for compatibility
@@ -104,6 +105,8 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,8 +123,49 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
     }
   };
 
+  const handleUploadSuccess = (attachment: AttachmentData) => {
+    setUploadError(null);
+    setUploadSuccess(`File "${attachment.filename}" uploaded successfully!`);
+    // Auto-hide success message after 5 seconds
+    setTimeout(() => setUploadSuccess(null), 5000);
+  };
+
+  const handleUploadError = (error: string) => {
+    setUploadSuccess(null);
+    setUploadError(error);
+    // Auto-hide error message after 10 seconds
+    setTimeout(() => setUploadError(null), 10000);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="edit-ticket-form">
+      {/* Upload Status Messages */}
+      {uploadSuccess && (
+        <div className="upload-status success">
+          <span>✅ {uploadSuccess}</span>
+          <button 
+            type="button" 
+            onClick={() => setUploadSuccess(null)}
+            className="status-close"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      
+      {uploadError && (
+        <div className="upload-status error">
+          <span>❌ {uploadError}</span>
+          <button 
+            type="button" 
+            onClick={() => setUploadError(null)}
+            className="status-close"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="form-group">
         <label htmlFor="edit-title">Title:</label>
         <input
@@ -156,6 +200,16 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
+      </div>
+
+      {/* File Upload Section */}
+      <div className="form-group">
+        <FileUpload
+          ticketId={task.id}
+          onUploadSuccess={handleUploadSuccess}
+          onUploadError={handleUploadError}
+          disabled={isSubmitting}
+        />
       </div>
 
       <div className="form-actions">
