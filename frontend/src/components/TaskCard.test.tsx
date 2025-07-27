@@ -23,7 +23,6 @@ const mockTask: Task = {
   title: 'Test Task',
   description: 'This is a test task description',
   priority: 'medium',
-  assignee: 'John Doe',
   status: 'pending',
   tags: ['frontend', 'bug'],
   dueDate: '2024-01-15',
@@ -212,8 +211,7 @@ describe('TaskCard Component', () => {
       expect(screen.getByText('⏱️ Estimated:')).toBeInTheDocument();
       expect(screen.getByText('8h')).toBeInTheDocument();
       expect(screen.getByText('📅 Due:')).toBeInTheDocument();
-      expect(screen.getByText('👤 Assignee:')).toBeInTheDocument();
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
+
     });
 
     it('should show action buttons when expanded', async () => {
@@ -366,12 +364,7 @@ describe('TaskCard Component', () => {
       expect(screen.queryByText('This is a test task description')).not.toBeInTheDocument();
     });
 
-    it('should show assignee even when not expanded if present', () => {
-      renderTaskCard({ task: mockTask });
-      
-      // Should show assignee without expanding
-      expect(screen.getByText('👤 John Doe')).toBeInTheDocument();
-    });
+
 
     it('should format date correctly', async () => {
       const user = userEvent.setup();

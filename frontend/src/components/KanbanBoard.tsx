@@ -35,9 +35,7 @@ const convertKanbanTaskToTask = (kanbanTask: KanbanTask): Task => {
   if (kanbanTask.priority) {
     task.priority = kanbanTask.priority;
   }
-  if (kanbanTask.assignee) {
-    task.assignee = kanbanTask.assignee;
-  }
+
   if (kanbanTask.created) {
     try {
       // Handle different date formats from the API
@@ -540,11 +538,7 @@ export function KanbanBoard() {
               {activeTask.description && (
                 <p className="task-description">{activeTask.description}</p>
               )}
-              {activeTask.assignee && (
-                <div className="task-assignee">
-                  <span>👤 {activeTask.assignee}</span>
-                </div>
-              )}
+
             </div>
           ) : null}
         </DragOverlay>

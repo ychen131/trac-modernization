@@ -181,7 +181,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ className = ''
                   }}
                 >
                   <div className="create-icon">+</div>
-                  <span>Create New Project</span>
+                  <div className="create-item-text">+ New Project</div>
                 </div>
               </div>
             </div>

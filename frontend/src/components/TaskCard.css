@@ -8,6 +8,7 @@
   transition: var(--transition-base);
   box-shadow: var(--shadow-sm);
   position: relative;
+  text-align: left;
 }
 
 .task-card:hover {
@@ -68,6 +69,7 @@
   line-height: var(--line-height-tight);
   cursor: pointer;
   transition: var(--transition-base);
+  text-align: left;
 }
 
 .task-title:hover {
@@ -141,6 +143,7 @@
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
   line-height: var(--line-height-normal);
+  text-align: left;
 }
 
 /* Task Details (Expanded View) */
@@ -236,18 +239,8 @@
   background: rgba(239, 68, 68, 0.05);
 }
 
-/* Task Assignee */
-.task-assignee {
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-primary);
-}
 
-.task-assignee span {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  font-weight: var(--font-weight-medium);
-}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {

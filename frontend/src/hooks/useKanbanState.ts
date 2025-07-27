@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useProjects } from './useProjects';
-import { formatUserForDisplay } from '../utils/userDisplay';
 
 // Import TicketFormData type for createTicket function
 export interface TicketFormData {
@@ -18,9 +17,7 @@ export interface KanbanTask {
   title: string;
   description?: string;
   priority?: 'low' | 'medium' | 'high';
-  assignee?: string;
   status: string;
-  reporter?: string;
   created?: number;
 }
 
@@ -132,11 +129,9 @@ export function useKanbanState(): UseKanbanStateReturn {
   const ticketToTask = useCallback((ticket: any): KanbanTask => ({
     id: ticket.id.toString(),
     title: ticket.summary,
-    description: `Reported by: ${formatUserForDisplay(ticket.reporter)}`,
+    description: ticket.description,
     priority: ticket.priority,
-    assignee: formatUserForDisplay(ticket.owner),
     status: ticket.status,
-    reporter: ticket.reporter,
     created: ticket.created,
   }), []);
 
@@ -228,7 +223,6 @@ export function useKanbanState(): UseKanbanStateReturn {
       description: ticketData.description,
       priority: ticketData.priority as 'low' | 'medium' | 'high', // Exclude 'critical' for now
       status: ticketData.status,
-      reporter: 'unknown@example.com', // Will be set by server based on auth token
       created: Date.now() / 1000 // Current timestamp
     };
 

@@ -147,12 +147,19 @@
 .dropdown-item.create-item {
   color: var(--color-primary);
   font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
   border-top: 1px solid var(--border-primary);
   margin-top: var(--space-1);
 }
 
 .dropdown-item.create-item:hover {
   background-color: var(--color-primary-light);
+}
+
+.create-item-text {
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  color: inherit;
 }
 
 .project-item-info {
