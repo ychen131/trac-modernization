@@ -53,7 +53,7 @@ const App: React.FC<AppProps> = () => {
         <p>Modern project tracking for hobbyists</p>
         
         {/* Debug info showing hook values */}
-        <div className="auth-debug" style={{ fontSize: '12px', opacity: 0.7, marginBottom: '10px' }}>
+        <div className="auth-debug">
           Auth Status: {isSignedIn ? 'Signed In' : 'Signed Out'} | 
           User: {user?.firstName || 'None'} | 
           Loaded: {isLoaded ? 'Yes' : 'No'}
@@ -78,7 +78,6 @@ const App: React.FC<AppProps> = () => {
             <div className="user-section">
               <UserButton afterSignOutUrl="/" />
               <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
-              <p>Email: {user?.primaryEmailAddress?.emailAddress}</p>
             </div>
             <div className="api-status">
               {apiStatus}

@@ -40,7 +40,7 @@ const mockColumn: Column = {
   id: 'todo',
   title: 'To Do',
   tasks: mockTasks,
-  color: '#e2e8f0',
+  color: '#565fa7', // colorPurpleDark
   description: 'Tasks to be started'
 };
 
@@ -48,14 +48,14 @@ const mockEmptyColumn: Column = {
   id: 'empty',
   title: 'Empty Column',
   tasks: [],
-  color: '#fed7d7'
+  color: '#4f8fc0' // colorBlueLight
 };
 
 const mockColumnWithLimits: Column = {
   id: 'limited',
   title: 'Limited Column',
   tasks: mockTasks,
-  color: '#fef5e7',
+  color: '#ac284f', // colorOrangeDark
   maxTasks: 3,
   allowNewTasks: true
 };
@@ -64,7 +64,7 @@ const mockColumnAtCapacity: Column = {
   id: 'full',
   title: 'Full Column',
   tasks: mockTasks,
-  color: '#c6f6d5',
+  color: '#4e6773', // colorGrayDark
   maxTasks: 2, // Same as number of tasks
   allowNewTasks: true
 };
@@ -98,7 +98,7 @@ describe('KanbanColumn Component', () => {
       renderKanbanColumn({ column: mockColumn });
       
       const header = screen.getByText('To Do').closest('.column-header');
-      expect(header).toHaveStyle({ backgroundColor: '#e2e8f0' });
+      expect(header).toHaveStyle({ backgroundColor: '#565fa7' });
     });
 
     it('should render all tasks in the column', () => {

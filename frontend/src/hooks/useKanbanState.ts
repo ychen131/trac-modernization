@@ -58,27 +58,27 @@ const DEFAULT_COLUMNS: Omit<KanbanColumn, 'tasks'>[] = [
   {
     id: 'todo',
     title: 'To Do',
-    color: '#e2e8f0',
+    color: '#565fa7', // colorPurpleDark
     description: 'New tasks to be started',
   },
   {
     id: 'in-progress',
     title: 'In Progress',
-    color: '#fed7d7',
+    color: '#4f8fc0', // colorBlueLight
     description: 'Tasks currently being worked on',
     maxTasks: 5, // Limit work in progress
   },
   {
     id: 'review',
     title: 'Review',
-    color: '#fef5e7',
+    color: '#ac284f', // colorOrangeDark
     description: 'Tasks ready for review',
     maxTasks: 3,
   },
   {
     id: 'done',
     title: 'Done',
-    color: '#c6f6d5',
+    color: '#4e6773', // colorGrayDark
     description: 'Completed tasks',
     allowNewTasks: false,
   },
