@@ -250,7 +250,8 @@ export function useKanbanState(): UseKanbanStateReturn {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
-      const createdTicket = await response.json();
+      const createResponse = await response.json();
+      const createdTicket = createResponse.ticket; // Extract the ticket from the response
       
       // 3. SUCCESS - Replace temp ticket with real ticket
       setData(prevData => {
