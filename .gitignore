@@ -106,4 +106,5 @@ node_modules/
 
 
 # log files
-test-projects/my-drone-project/log/trac.log
+test-projects/my-drone-project/log/*
+test-projects/my-drone-project/attachments/*
