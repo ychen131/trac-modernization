@@ -12,7 +12,15 @@ from ..core.dependencies import initialize_trac_environment
 logger = logging.getLogger(__name__)
 
 # Project storage file path
-PROJECTS_FILE = "/app/data/projects.json"
+# Use Docker path if running in container, otherwise local development path
+if os.path.exists("/app/data"):
+    PROJECTS_FILE = "/app/data/projects.json"
+else:
+    # For development - go up from backend/app/crud/ to project root
+    current_file = os.path.abspath(__file__)
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+    project_root = os.path.dirname(backend_dir)
+    PROJECTS_FILE = os.path.join(project_root, "data", "projects.json")
 
 def ensure_data_directory():
     """Ensure the data directory exists."""
