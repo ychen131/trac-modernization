@@ -35,6 +35,13 @@
   transition: all 0.3s ease;
 }
 
+.project-section {
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 /* Authentication Section Styles */
 .auth-section {
   display: flex;

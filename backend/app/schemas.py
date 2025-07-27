@@ -1,6 +1,7 @@
 
 from pydantic import BaseModel, validator
 from typing import Optional, List
+from datetime import datetime
 
 class TicketModel(BaseModel):
     """Individual ticket model with validation."""
@@ -145,4 +146,46 @@ class AttachmentListResponse(BaseModel):
     status: str
     ticket_id: int
     attachments: List[AttachmentModel]
-    total_count: int 
+    total_count: int
+
+# Project-related models
+class ProjectCreateRequest(BaseModel):
+    """Request model for creating projects."""
+    name: str
+    description: Optional[str] = ""
+    
+    @validator('name')
+    def name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Project name cannot be empty')
+        return v.strip()
+
+class ProjectModel(BaseModel):
+    """Individual project model with validation."""
+    id: str
+    name: str
+    description: str
+    owner_id: str
+    owner_email: str
+    created_at: str
+    
+    @validator('name')
+    def name_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Project name cannot be empty')
+        return v.strip()
+
+class ProjectCreateResponse(BaseModel):
+    """Response model for project creation."""
+    status: str
+    message: str
+    project: ProjectModel
+
+class ProjectListResponse(BaseModel):
+    """Response model for listing projects."""
+    status: str
+    user_id: str
+    user_email: str
+    projects: List[ProjectModel]
+    total_count: int
+    message: Optional[str] = None 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { useProjects } from './useProjects';
 
 // Import TicketFormData type for createTicket function
 export interface TicketFormData {
@@ -104,6 +105,27 @@ export function useKanbanState(): UseKanbanStateReturn {
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, { originalStatus: string; targetStatus: string }>>(new Map());
   
   const { getToken } = useAuth();
+  const { selectedProject } = useProjects();
+
+  // Helper function to get headers with project ID
+  const getApiHeaders = useCallback(async () => {
+    const token = await getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please sign in.');
+    }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Add project ID header if available
+    if (selectedProject?.id) {
+      headers['X-Project-Id'] = selectedProject.id;
+    }
+
+    return headers;
+  }, [getToken, selectedProject]);
 
   // Convert API ticket to Kanban task
   const ticketToTask = useCallback((ticket: any): KanbanTask => ({
@@ -135,16 +157,10 @@ export function useKanbanState(): UseKanbanStateReturn {
   // Fetch tickets from API
   const fetchTickets = useCallback(async (): Promise<KanbanTask[]> => {
     try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error('Authentication required. Please sign in.');
-      }
+      const headers = await getApiHeaders();
 
       const response = await fetch('/api/tickets', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -173,19 +189,16 @@ export function useKanbanState(): UseKanbanStateReturn {
       }
       throw new Error(err instanceof Error ? err.message : 'Failed to fetch tickets');
     }
-  }, [getToken, ticketToTask]);
+  }, [getApiHeaders, ticketToTask]);
 
   // Update ticket status on server
   const updateTicketStatus = useCallback(async (taskId: string, newStatus: string): Promise<void> => {
     try {
-      const token = await getToken();
+      const headers = await getApiHeaders();
       
       const response = await fetch(`/api/tickets/${taskId}`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ status: newStatus }),
       });
 
@@ -200,7 +213,7 @@ export function useKanbanState(): UseKanbanStateReturn {
       console.error('Error updating ticket status:', err);
       throw new Error(err instanceof Error ? err.message : 'Failed to update ticket');
     }
-  }, [getToken]);
+  }, [getApiHeaders]);
 
   // Create ticket with optimistic UI updates
   const createTicket = useCallback(async (ticketData: TicketFormData, columnId: string): Promise<void> => {
@@ -231,17 +244,11 @@ export function useKanbanState(): UseKanbanStateReturn {
 
     try {
       // 2. API CALL - Create ticket on server
-      const token = await getToken();
-      if (!token) {
-        throw new Error('Authentication required');
-      }
+      const headers = await getApiHeaders();
 
       const response = await fetch('/api/tickets', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(ticketData),
       });
 
@@ -293,7 +300,7 @@ export function useKanbanState(): UseKanbanStateReturn {
       setError(`Failed to create ticket: ${errorMessage}`);
       throw error;
     }
-  }, [getToken, setData, setError]);
+  }, [getApiHeaders, setData, setError]);
 
   // Refresh data from server
   const refreshData = useCallback(async () => {
@@ -470,14 +477,11 @@ export function useKanbanState(): UseKanbanStateReturn {
       }));
       
       // Attempt server deletion
-      const token = await getToken();
+      const headers = await getApiHeaders();
       
       const response = await fetch(`/api/tickets/${taskId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -496,7 +500,7 @@ export function useKanbanState(): UseKanbanStateReturn {
       setError(`Failed to delete task: ${err instanceof Error ? err.message : 'Unknown error'}`);
       throw err;
     }
-  }, [data, getToken]);
+  }, [data, getApiHeaders]);
 
   // Update ticket details on server and optimistically update UI
   const updateTicket = useCallback(async (taskId: string, updateData: Partial<TicketFormData>): Promise<void> => {
@@ -545,14 +549,11 @@ export function useKanbanState(): UseKanbanStateReturn {
       }));
       
       // Attempt server update
-      const token = await getToken();
+      const headers = await getApiHeaders();
       
       const response = await fetch(`/api/tickets/${taskId}`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(updateData),
       });
 
@@ -572,7 +573,7 @@ export function useKanbanState(): UseKanbanStateReturn {
       setError(`Failed to update task: ${err instanceof Error ? err.message : 'Unknown error'}`);
       throw err;
     }
-  }, [data, getToken]);
+  }, [data, getApiHeaders]);
 
   // Initial load
   useEffect(() => {

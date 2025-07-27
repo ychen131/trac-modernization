@@ -8,6 +8,7 @@ import {
 } from '@clerk/clerk-react';
 import './App.css';
 import { KanbanBoard } from './components/KanbanBoard';
+import { ProjectSelector } from './components/ProjectSelector';
 import ErrorBoundary from './components/ErrorBoundary';
 
 interface AppProps {}
@@ -78,6 +79,9 @@ const App: React.FC<AppProps> = () => {
             <div className="user-section">
               <UserButton afterSignOutUrl="/" />
               <h2>Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!</h2>
+            </div>
+            <div className="project-section">
+              <ProjectSelector />
             </div>
             <div className="api-status">
               {apiStatus}

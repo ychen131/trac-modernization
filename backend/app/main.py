@@ -26,7 +26,7 @@ if project_root not in sys.path:
 from trac.env import Environment
 
 from . import schemas, security
-from .routers import tickets as tickets_router, attachments as attachments_router
+from .routers import tickets as tickets_router, attachments as attachments_router, projects as projects_router
 from .core.config import project_root as config_project_root
 
 # Load environment variables from .env file in project root
@@ -81,6 +81,7 @@ app.add_middleware(
 
 app.include_router(tickets_router.router, prefix="/api")
 app.include_router(attachments_router.router, prefix="/api")
+app.include_router(projects_router.router, prefix="/api")
 
 
 # Mount static files for serving Vite-built frontend
