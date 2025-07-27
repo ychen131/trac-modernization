@@ -388,8 +388,18 @@ export function KanbanBoard() {
   return (
     <div className="kanban-board-container">
       <div className="kanban-header">
-        <h2>📋 Project Board</h2>
-        <p>Drag tasks between columns to update their status</p>
+        <div className="header-content">
+          <div className="header-text">
+            <h2>📋 Project Board</h2>
+            <p>Drag tasks between columns to update their status</p>
+          </div>
+          <button 
+            className="add-task-button"
+            onClick={() => handleAddTask('todo')}
+          >
+            ➕ Add Task
+          </button>
+        </div>
         
         {error && (
           <div className="kanban-error">
@@ -418,9 +428,8 @@ export function KanbanBoard() {
               onTaskEdit={handleTaskEdit}
               onTaskDelete={handleTaskDelete}
               onTaskPriorityChange={handleTaskPriorityChange}
-              onAddTask={() => handleAddTask(column.id)}
               onColumnEdit={handleColumnEdit}
-              showAddButton={true}
+              showAddButton={false}
               compactTasks={false}
             />
           ))}
