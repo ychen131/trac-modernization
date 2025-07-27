@@ -20,6 +20,7 @@ import shutil
 from pathlib import Path
 from pydantic import BaseModel, validator
 from dotenv import load_dotenv
+import urllib.parse
 
 # Add the project root to Python path to import Trac modules
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -188,6 +189,13 @@ class AttachmentCreateResponse(BaseModel):
     status: str
     message: str
     attachment: AttachmentModel
+
+class AttachmentListResponse(BaseModel):
+    """Response model for listing attachments."""
+    status: str
+    ticket_id: int
+    attachments: List[AttachmentModel]
+    total_count: int
 
 
 class AuthenticationError(Exception):
@@ -1338,6 +1346,540 @@ async def delete_ticket(
         logger.error(f"Failed to delete ticket {ticket_id}: {str(e)}")
         # Don't expose internal error details in production
         error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while deleting ticket"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+
+
+@app.get(
+    "/api/tickets/{ticket_id}/attachments",
+    response_model=AttachmentListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get Attachments for a Specific Ticket",
+    description="Retrieve a list of attachments for a specific ticket. Returns paginated results with attachment details.",
+    responses={
+        200: {
+            "description": "Successfully retrieved attachments",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "ticket_id": 1,
+                        "attachments": [
+                            {
+                                "filename": "document.pdf",
+                                "size": 1024576,
+                                "description": "Project documentation",
+                                "author": "user@example.com",
+                                "uploaded": 1640995200
+                            }
+                        ],
+                        "total_count": 1,
+                        "message": None
+                    }
+                }
+            }
+        },
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden - user doesn't own this ticket"},
+        404: {"description": "Ticket not found"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Attachments"]
+)
+async def get_ticket_attachments(
+    ticket_id: int,
+    user: ClerkUser = Depends(require_auth)
+) -> AttachmentListResponse:
+    """
+    **Get Attachments for a Specific Ticket**
+    
+    This endpoint retrieves a list of attachments for a specific ticket.
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Ownership Rules:**
+    - Users can only view attachments for tickets they own or created.
+    - Returns 403 Forbidden if user doesn't have permission.
+    
+    **Returns:**
+    - List of attachments with metadata
+    - Total count
+    - Ticket ID
+    
+    **Example Usage:**
+    ```
+    curl -H "Authorization: Bearer <your-token>" http://localhost:8000/api/tickets/1/attachments
+    ```
+    """
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Check if ticket exists and user has permission to view attachments
+        ticket_data = await check_ticket_ownership(ticket_id, user, env)
+        
+        if ticket_data is None:
+            # First check if ticket exists at all
+            with env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT id FROM ticket WHERE id = %s", (ticket_id,))
+                if cursor.fetchone() is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Ticket {ticket_id} not found"
+                    )
+            
+            # Ticket exists but user doesn't have permission
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You can only view attachments for tickets you own or created."
+            )
+        
+        # Get attachments for the ticket
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT filename, size, description, author, time
+                FROM attachment 
+                WHERE type = %s AND id = %s
+                ORDER BY time DESC 
+                LIMIT 20
+            """, ("ticket", ticket_id))
+            
+            attachments = []
+            for row in cursor.fetchall():
+                # Handle timestamp conversion - Trac might store in microseconds
+                raw_timestamp = row[4]
+                uploaded_timestamp = raw_timestamp
+                
+                if raw_timestamp is not None:
+                    try:
+                        # Convert to integer if it's not already
+                        timestamp_int = int(raw_timestamp)
+                        
+                        # Check if timestamp is in microseconds (13+ digits) vs seconds (10 digits)
+                        if timestamp_int > 9999999999:  # More than 10 digits means likely microseconds
+                            uploaded_timestamp = timestamp_int // 1000000  # Convert microseconds to seconds
+                        else:
+                            uploaded_timestamp = timestamp_int
+                            
+                        # Validate the timestamp is reasonable (between 2000 and 2050)
+                        if uploaded_timestamp < 946684800 or uploaded_timestamp > 2524608000:
+                            logger.warning(f"Invalid timestamp {uploaded_timestamp} for attachment {row[0]}, using current time")
+                            uploaded_timestamp = int(time.time())
+                            
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Failed to parse timestamp {raw_timestamp} for attachment {row[0]}: {e}")
+                        uploaded_timestamp = int(time.time())  # Use current time as fallback
+                else:
+                    uploaded_timestamp = int(time.time())  # Use current time if None
+                
+                attachments.append({
+                    "filename": row[0],
+                    "size": row[1],
+                    "description": row[2],
+                    "author": row[3],
+                    "uploaded": uploaded_timestamp
+                })
+        
+        return AttachmentListResponse(
+            status="success",
+            ticket_id=ticket_id,
+            attachments=[AttachmentModel(**attachment) for attachment in attachments],
+            total_count=len(attachments)
+        )
+        
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch attachments for ticket {ticket_id}: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while fetching attachments"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+
+
+@app.get(
+    "/api/tickets/{ticket_id}/attachments/{filename}/download",
+    summary="Download a Specific Attachment",
+    description="Download a specific attachment file from a ticket. Returns the file with proper headers.",
+    responses={
+        200: {
+            "description": "File downloaded successfully",
+            "content": {
+                "application/octet-stream": {
+                    "example": "Binary file content"
+                }
+            }
+        },
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden - user doesn't own this ticket"},
+        404: {"description": "Ticket or attachment not found"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Attachments"]
+)
+async def download_ticket_attachment(
+    ticket_id: int,
+    filename: str,
+    user: ClerkUser = Depends(require_auth)
+):
+    """
+    **Download a Specific Attachment**
+    
+    This endpoint allows downloading a specific attachment file from a ticket.
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Ownership Rules:**
+    - Users can only download attachments from tickets they own or created.
+    - Returns 403 Forbidden if user doesn't have permission.
+    
+    **Returns:**
+    - File content with appropriate Content-Type header
+    - Content-Disposition header for download
+    
+    **Example Usage:**
+    ```
+    curl -H "Authorization: Bearer <token>" \
+         -O http://localhost:8000/api/tickets/1/attachments/document.pdf/download
+    ```
+    """
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        from fastapi.responses import FileResponse
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Check if ticket exists and user has permission
+        ticket_data = await check_ticket_ownership(ticket_id, user, env)
+        
+        if ticket_data is None:
+            # First check if ticket exists at all
+            with env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT id FROM ticket WHERE id = %s", (ticket_id,))
+                if cursor.fetchone() is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Ticket {ticket_id} not found"
+                    )
+            
+            # Ticket exists but user doesn't have permission
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You can only download attachments from tickets you own or created."
+            )
+        
+        # Check if attachment exists in database
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT filename, size, description, author
+                FROM attachment 
+                WHERE type = %s AND id = %s AND filename = %s
+            """, ("ticket", ticket_id, filename))
+            
+            attachment_row = cursor.fetchone()
+            if not attachment_row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Attachment '{filename}' not found for ticket {ticket_id}"
+                )
+        
+        # Construct file path using Trac's pattern
+        ticket_id_str = str(ticket_id)
+        hash_obj = hashlib.sha1(ticket_id_str.encode('utf-8'))
+        hash_hex = hash_obj.hexdigest()
+        
+        # Create hashed filename following Trac's pattern
+        filename_hash = hashlib.sha1(filename.encode('utf-8')).hexdigest()
+        # Keep the original extension if it exists
+        if '.' in filename:
+            extension = filename.rsplit('.', 1)[1]
+            hashed_filename = f"{filename_hash}.{extension}"
+        else:
+            hashed_filename = filename_hash
+        
+        # Construct full file path
+        attachments_dir = os.path.join(trac_env_path, "attachments")
+        file_path = os.path.join(attachments_dir, "ticket", hash_hex[0:3], hash_hex, hashed_filename)
+        
+        # Check if file exists on disk
+        if not os.path.isfile(file_path):
+            logger.error(f"Attachment file not found on disk: {file_path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Attachment file '{filename}' not found on server"
+            )
+        
+        # Determine content type based on file extension
+        import mimetypes
+        content_type, _ = mimetypes.guess_type(filename)
+        if content_type is None:
+            content_type = "application/octet-stream"
+        
+        logger.info(f"User {user.email} downloading attachment '{filename}' from ticket {ticket_id}")
+        
+        # Properly encode filename for Content-Disposition header
+        # Handle Unicode characters by using RFC 5987 encoding
+        
+        # Try to encode as ASCII first (most compatible)
+        try:
+            ascii_filename = filename.encode('ascii').decode('ascii')
+            content_disposition = f"attachment; filename=\"{ascii_filename}\""
+        except UnicodeEncodeError:
+            # Fallback to RFC 5987 encoding for Unicode filenames
+            encoded_filename = urllib.parse.quote(filename.encode('utf-8'))
+            content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
+        
+        # Return file with proper headers
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": content_disposition,
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database or file system")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database or file system access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to download attachment '{filename}' from ticket {ticket_id}: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while downloading attachment"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
+
+
+@app.delete(
+    "/api/tickets/{ticket_id}/attachments/{filename}",
+    summary="Delete a Specific Attachment",
+    description="Delete a specific attachment file from a ticket. Removes both the file and database record.",
+    responses={
+        200: {
+            "description": "Attachment deleted successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "Attachment deleted successfully",
+                        "filename": "document.pdf",
+                        "ticket_id": 1
+                    }
+                }
+            }
+        },
+        401: {"description": "Authentication required"},
+        403: {"description": "Access forbidden - user doesn't own this ticket"},
+        404: {"description": "Ticket or attachment not found"},
+        503: {"description": "Trac service unavailable"},
+        500: {"description": "Internal server error"}
+    },
+    tags=["Attachments"]
+)
+async def delete_ticket_attachment(
+    ticket_id: int,
+    filename: str,
+    user: ClerkUser = Depends(require_auth)
+):
+    """
+    **Delete a Specific Attachment**
+    
+    This endpoint allows deleting a specific attachment file from a ticket.
+    Removes both the file from disk and the database record.
+    
+    **Authentication Required:** 
+    - Bearer token in Authorization header
+    - Valid Clerk JWT token
+    
+    **Ownership Rules:**
+    - Users can only delete attachments from tickets they own or created.
+    - Returns 403 Forbidden if user doesn't have permission.
+    
+    **Returns:**
+    - Success confirmation with filename and ticket ID
+    
+    **Example Usage:**
+    ```
+    curl -X DELETE -H "Authorization: Bearer <token>" \
+         http://localhost:8000/api/tickets/1/attachments/document.pdf
+    ```
+    """
+    try:
+        # Import Trac environment
+        from trac.env import Environment
+        
+        # Path to test Trac environment
+        if os.path.exists("/app/test-projects"):
+            trac_env_path = "/app/test-projects/my-drone-project"
+        else:
+            trac_env_path = os.path.join(project_root, "test-projects", "my-drone-project")
+        
+        # Initialize Trac environment
+        env = Environment(trac_env_path)
+        
+        # Check if ticket exists and user has permission
+        ticket_data = await check_ticket_ownership(ticket_id, user, env)
+        
+        if ticket_data is None:
+            # First check if ticket exists at all
+            with env.db_transaction as db:
+                cursor = db.cursor()
+                cursor.execute("SELECT id FROM ticket WHERE id = %s", (ticket_id,))
+                if cursor.fetchone() is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Ticket {ticket_id} not found"
+                    )
+            
+            # Ticket exists but user doesn't have permission
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You can only delete attachments from tickets you own or created."
+            )
+        
+        # Check if attachment exists and get details
+        with env.db_transaction as db:
+            cursor = db.cursor()
+            cursor.execute("""
+                SELECT filename, size, description, author
+                FROM attachment 
+                WHERE type = %s AND id = %s AND filename = %s
+            """, ("ticket", ticket_id, filename))
+            
+            attachment_row = cursor.fetchone()
+            if not attachment_row:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Attachment '{filename}' not found for ticket {ticket_id}"
+                )
+            
+            # Construct file path using Trac's pattern
+            ticket_id_str = str(ticket_id)
+            hash_obj = hashlib.sha1(ticket_id_str.encode('utf-8'))
+            hash_hex = hash_obj.hexdigest()
+            
+            # Create hashed filename following Trac's pattern
+            filename_hash = hashlib.sha1(filename.encode('utf-8')).hexdigest()
+            # Keep the original extension if it exists
+            if '.' in filename:
+                extension = filename.rsplit('.', 1)[1]
+                hashed_filename = f"{filename_hash}.{extension}"
+            else:
+                hashed_filename = filename_hash
+            
+            # Construct full file path
+            attachments_dir = os.path.join(trac_env_path, "attachments")
+            file_path = os.path.join(attachments_dir, "ticket", hash_hex[0:3], hash_hex, hashed_filename)
+            
+            # Delete from database first (in transaction)
+            cursor.execute("""
+                DELETE FROM attachment 
+                WHERE type = %s AND id = %s AND filename = %s
+            """, ("ticket", ticket_id, filename))
+            
+            # Check if any rows were affected
+            if cursor.rowcount == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to delete attachment from database"
+                )
+            
+            # Delete file from disk (if it exists)
+            if os.path.isfile(file_path):
+                try:
+                    os.unlink(file_path)
+                    logger.info(f"Deleted attachment file: {file_path}")
+                except OSError as e:
+                    logger.error(f"Failed to delete attachment file {file_path}: {str(e)}")
+                    # Don't fail the operation if file deletion fails but DB deletion succeeded
+                    # The file might have been manually deleted or corrupted
+            else:
+                logger.warning(f"Attachment file not found on disk during deletion: {file_path}")
+        
+        logger.info(f"User {user.email} deleted attachment '{filename}' from ticket {ticket_id}")
+        
+        return {
+            "status": "success",
+            "message": "Attachment deleted successfully",
+            "filename": filename,
+            "ticket_id": ticket_id
+        }
+        
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        logger.error("Trac environment not found")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Trac environment is not available. Please check configuration."
+        )
+    except PermissionError:
+        logger.error("Permission denied accessing Trac database or file system")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database or file system access denied. Please check permissions."
+        )
+    except Exception as e:
+        logger.error(f"Failed to delete attachment '{filename}' from ticket {ticket_id}: {str(e)}")
+        # Don't expose internal error details in production
+        error_detail = str(e) if DEVELOPMENT_MODE else "Internal server error while deleting attachment"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail

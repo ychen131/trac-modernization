@@ -16,6 +16,7 @@ import { Task } from './TaskCard'; // TaskCard component removed - not currently
 import { useKanbanState, KanbanTask, type TicketFormData } from '../hooks/useKanbanState';
 import { TicketCreateForm } from './TicketCreateForm';
 import { FileUpload, type AttachmentData } from './FileUpload';
+import { AttachmentList } from './AttachmentList';
 import './KanbanBoard.css';
 
 // Convert KanbanTask to Task interface for compatibility
@@ -107,6 +108,7 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [attachmentRefreshTrigger, setAttachmentRefreshTrigger] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,11 +128,29 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
   const handleUploadSuccess = (attachment: AttachmentData) => {
     setUploadError(null);
     setUploadSuccess(`File "${attachment.filename}" uploaded successfully!`);
+    // Trigger refresh of attachment list
+    setAttachmentRefreshTrigger(prev => prev + 1);
     // Auto-hide success message after 5 seconds
     setTimeout(() => setUploadSuccess(null), 5000);
   };
 
   const handleUploadError = (error: string) => {
+    setUploadSuccess(null);
+    setUploadError(error);
+    // Auto-hide error message after 10 seconds
+    setTimeout(() => setUploadError(null), 10000);
+  };
+
+  const handleAttachmentSuccess = (message: string) => {
+    setUploadError(null);
+    setUploadSuccess(message);
+    // Trigger refresh of attachment list
+    setAttachmentRefreshTrigger(prev => prev + 1);
+    // Auto-hide success message after 5 seconds
+    setTimeout(() => setUploadSuccess(null), 5000);
+  };
+
+  const handleAttachmentError = (error: string) => {
     setUploadSuccess(null);
     setUploadError(error);
     // Auto-hide error message after 10 seconds
@@ -200,6 +220,16 @@ function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
           <option value="medium">Medium</option>
           <option value="high">High</option>
         </select>
+      </div>
+
+      {/* Existing Attachments List */}
+      <div className="form-group">
+        <AttachmentList
+          ticketId={task.id}
+          onSuccess={handleAttachmentSuccess}
+          onError={handleAttachmentError}
+          refreshTrigger={attachmentRefreshTrigger}
+        />
       </div>
 
       {/* File Upload Section */}
