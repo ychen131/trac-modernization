@@ -40,7 +40,7 @@ export interface KanbanData {
 const STATUS_MAPPING: Record<string, string> = {
   'new': 'todo',
   'assigned': 'in-progress',
-  'accepted': 'in-progress',
+  'accepted': 'review',
   'reopened': 'todo',
   'closed': 'done',
 };
