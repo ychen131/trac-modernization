@@ -92,6 +92,84 @@ const convertKanbanColumnToColumn = (kanbanColumn: import('../hooks/useKanbanSta
   return column;
 };
 
+// Edit Ticket Form Component
+interface EditTicketFormProps {
+  task: Task;
+  onSave: (updatedData: Partial<TicketFormData>) => Promise<void>;
+  onCancel: () => void;
+}
+
+function EditTicketForm({ task, onSave, onCancel }: EditTicketFormProps) {
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || '');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      await onSave({
+        summary: title,
+        description,
+        priority,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="edit-ticket-form">
+      <div className="form-group">
+        <label htmlFor="edit-title">Title:</label>
+        <input
+          id="edit-title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+          maxLength={200}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="edit-description">Description:</label>
+        <textarea
+          id="edit-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          maxLength={2000}
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="edit-priority">Priority:</label>
+        <select
+          id="edit-priority"
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+
+      <div className="form-actions">
+        <button type="button" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
+        </button>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function KanbanBoard() {
   const {
     data,
@@ -103,6 +181,7 @@ export function KanbanBoard() {
     // retryFailedUpdate, // Available for future error recovery features
     createTicket,
     deleteTicket,
+    updateTicket,
   } = useKanbanState();
   
   // Authentication is now handled by the useKanbanState hook
@@ -115,6 +194,10 @@ export function KanbanBoard() {
   const [formColumnId, setFormColumnId] = useState<string>('');
   const [formColumnTitle, setFormColumnTitle] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -208,9 +291,8 @@ export function KanbanBoard() {
 
   // Handle task editing
   const handleTaskEdit = (task: Task) => {
-    // For now, just log the edit action
-    // This could open a modal or navigate to an edit page
-    console.log('Edit task:', task);
+    setTaskToEdit(task);
+    setIsEditModalOpen(true);
   };
 
   // Handle task deletion
@@ -225,10 +307,20 @@ export function KanbanBoard() {
   };
 
   // Handle priority change
-  const handleTaskPriorityChange = (taskId: string, priority: Task['priority']) => {
-    // For now, just log the priority change
-    // This would need an update API endpoint
-    console.log('Change priority:', taskId, priority);
+  const handleTaskPriorityChange = async (taskId: string, priority: Task['priority']) => {
+    // Only update if priority is defined and valid
+    if (!priority) {
+      console.warn('Cannot update task priority: priority is undefined');
+      return;
+    }
+    
+    try {
+      await updateTicket(taskId, { priority });
+      console.log(`Successfully updated priority for task ${taskId} to ${priority}`);
+    } catch (error) {
+      console.error('Failed to update task priority:', error);
+      // Error handling is already done in updateTicket function with automatic rollback
+    }
   };
 
   // Handle opening the ticket creation form
@@ -389,6 +481,41 @@ export function KanbanBoard() {
         onCancel={handleFormCancel}
         loading={isSubmitting}
       />
+
+      {/* Ticket Edit Modal */}
+      {isEditModalOpen && taskToEdit && (
+        <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Ticket</h3>
+              <button 
+                onClick={() => setIsEditModalOpen(false)}
+                className="modal-close"
+              >
+                ×
+              </button>
+            </div>
+            
+            <EditTicketForm
+              task={taskToEdit}
+              onSave={async (updatedData) => {
+                try {
+                  await updateTicket(taskToEdit.id, updatedData);
+                  setIsEditModalOpen(false);
+                  setTaskToEdit(null);
+                } catch (error) {
+                  console.error('Failed to update ticket:', error);
+                  // Error handling is done in updateTicket function
+                }
+              }}
+              onCancel={() => {
+                setIsEditModalOpen(false);
+                setTaskToEdit(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
