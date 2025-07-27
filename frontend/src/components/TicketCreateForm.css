@@ -27,13 +27,7 @@
   position: relative;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .ticket-form-modal {
-    background: #1f2937;
-    color: #f9fafb;
-  }
-}
+/* Dark mode handled by design system */
 
 /* Header */
 .ticket-form-header {
@@ -42,35 +36,19 @@
   position: relative;
 }
 
-@media (prefers-color-scheme: dark) {
-  .ticket-form-header {
-    border-bottom-color: #374151;
-  }
-}
+/* Header dark mode handled by design system */
 
 .ticket-form-header h2 {
-  margin: 0 0 8px 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-@media (prefers-color-scheme: dark) {
-  .ticket-form-header h2 {
-    color: #f9fafb;
-  }
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 
 .ticket-form-subtitle {
   margin: 0;
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .ticket-form-subtitle {
-    color: #9ca3af;
-  }
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .ticket-form-close {
@@ -283,61 +261,22 @@
   }
 }
 
-/* Buttons */
+/* Buttons inherit from design system (.btn, .btn-primary, .btn-secondary) */
 .btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  /* Additional component-specific button styling */
+  gap: var(--space-2);
   min-height: 40px;
 }
 
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
 .btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  /* Extends design system .btn-primary */
 }
 
 .btn-secondary {
-  background: #f9fafb;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  /* Extends design system .btn-secondary */
 }
 
-.btn-secondary:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-@media (prefers-color-scheme: dark) {
-  .btn-secondary {
-    background: #374151;
-    color: #d1d5db;
-    border-color: #4b5563;
-  }
-  
-  .btn-secondary:hover:not(:disabled) {
-    background: #4b5563;
-    border-color: #6b7280;
-  }
-}
+/* Dark mode handled automatically by design system */
 
 /* Loading Spinner */
 .loading-spinner {

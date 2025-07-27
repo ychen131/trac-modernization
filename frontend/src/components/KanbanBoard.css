@@ -37,20 +37,12 @@
 }
 
 .add-task-button {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border: none;
+  /* Extends .btn-primary from design system with custom spacing */
   padding: var(--space-3) var(--space-6);
-  border-radius: var(--radius-base);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: var(--transition-base);
   box-shadow: var(--shadow-primary);
 }
 
 .add-task-button:hover {
-  background: var(--color-primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -91,7 +83,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-primary);
   position: relative;
 }
 
@@ -109,21 +101,21 @@
 
 .column-title {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #1a202c !important;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary) !important;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
   position: relative;
   z-index: 1;
 }
 
 .task-count {
-  background: rgba(26, 32, 44, 0.15);
-  color: #1a202c !important;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 600;
+  background: var(--bg-tertiary);
+  color: var(--text-primary) !important;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   min-width: 24px;
   text-align: center;
   backdrop-filter: blur(2px);
@@ -341,81 +333,7 @@
   }
 }
 
-/* Dark mode support (optional) */
-@media (prefers-color-scheme: dark) {
-  .kanban-board-container {
-    background: #1a202c;
-  }
-  
-  .kanban-column {
-    background: #2d3748;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-  
-  .kanban-header h2 {
-    color: #f7fafc;
-  }
-  
-  .kanban-header p {
-    color: #a0aec0;
-  }
-  
-  .column-header::before {
-    background: rgba(0, 0, 0, 0.85);
-  }
-  
-  .column-title {
-    color: #f7fafc !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  }
-  
-  .task-count {
-    background: rgba(255, 255, 255, 0.15);
-    color: #f7fafc !important;
-    border-color: rgba(255, 255, 255, 0.3);
-  }
-  
-  .task-card {
-    background: #4a5568;
-    border-color: #718096;
-  }
-  
-  .task-card:hover {
-    border-color: #a0aec0;
-  }
-  
-  .task-title {
-    color: #f7fafc;
-  }
-  
-  .task-description {
-    color: #cbd5e0;
-  }
-  
-  .task-assignee {
-    border-top-color: #718096;
-  }
-  
-  .task-assignee span {
-    color: #e2e8f0;
-  }
-  
-  .empty-column-placeholder {
-    background-color: #2d3748;
-    border-color: #4a5568;
-    color: #718096;
-  }
-  
-  .tasks-container.drag-over {
-    background-color: rgba(49, 130, 206, 0.1);
-  }
-  
-  .tasks-container.drag-over .empty-column-placeholder {
-    background-color: rgba(49, 130, 206, 0.15);
-    border-color: #63b3ed;
-    color: #63b3ed;
-  }
-}
+/* Dark mode handled automatically by design system */
 
 /* Animation for smooth transitions */
 .kanban-column,
@@ -483,19 +401,12 @@
 }
 
 .retry-button {
-  background: #e53e3e;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  /* Extends .btn-danger from design system */
+  padding: var(--space-2) var(--space-4);
 }
 
 .retry-button:hover {
-  background: #c53030;
+  /* Hover handled by design system */
 }
 
 /* Status Indicator */
@@ -510,22 +421,13 @@
 }
 
 .refresh-button {
-  background: #4299e1;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  /* Extends .btn-primary from design system */
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-2);
 }
 
 .refresh-button:hover {
-  background: var(--color-primary);
+  /* Hover handled by design system */
 }
 
 .status-text {
@@ -748,46 +650,17 @@
   border-top: 1px solid #e2e8f0;
 }
 
+/* Form actions buttons inherit from design system */
 .form-actions button {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: 1px solid;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  /* Base button styles applied via .btn class in components */
 }
 
 .form-actions button[type="button"] {
-  background: white;
-  color: #718096;
-  border-color: #cbd5e0;
-}
-
-.form-actions button[type="button"]:hover {
-  background: #f7fafc;
-  color: #2d3748;
+  /* Secondary button styles applied via .btn-secondary class in components */
 }
 
 .form-actions button[type="submit"] {
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border-color: var(--color-primary);
-}
-
-.form-actions button[type="submit"]:hover {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
-}
-
-.form-actions button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-actions button:disabled:hover {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  /* Primary button styles applied via .btn-primary class in components */
 } 
 
 /* Upload Status Messages */
@@ -803,15 +676,15 @@
 }
 
 .upload-status.success {
-  background: #f0fff4;
-  color: #22543d;
-  border: 1px solid #9ae6b4;
+  background: var(--bg-success);
+  color: var(--color-success);
+  border: 1px solid var(--border-success);
 }
 
 .upload-status.error {
-  background: #fed7d7;
-  color: #742a2a;
-  border: 1px solid #fc8181;
+  background: var(--bg-danger);
+  color: var(--color-danger);
+  border: 1px solid var(--border-danger);
 }
 
 .status-close {
@@ -831,17 +704,4 @@
   opacity: 1;
 }
 
-/* Dark mode support for upload status */
-@media (prefers-color-scheme: dark) {
-  .upload-status.success {
-    background: #1a2b1a;
-    color: #9ae6b4;
-    border-color: #38a169;
-  }
-  
-  .upload-status.error {
-    background: #742a2a;
-    color: #fc8181;
-    border-color: #e53e3e;
-  }
-} 
+/* Upload status dark mode handled by design system */ 

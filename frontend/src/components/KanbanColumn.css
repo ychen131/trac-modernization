@@ -171,18 +171,13 @@
 }
 
 .add-first-task-btn {
-  background: #3182ce;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  /* Extends .btn-primary from design system */
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
 }
 
 .add-first-task-btn:hover {
-  background: #2c5aa0;
+  /* Hover handled by design system */
 }
 
 /* Add Task Input */
@@ -263,27 +258,28 @@
 
 .add-task-btn {
   width: 100%;
-  background: #f7fafc;
-  border: 1px dashed #cbd5e0;
-  border-radius: 6px;
-  padding: 10px;
-  color: #4a5568;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-primary);
+  border-radius: var(--radius-base);
+  padding: var(--space-3);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
+  transition: var(--transition-base);
+  font-size: var(--font-size-sm);
 }
 
 .add-task-btn:hover:not(:disabled) {
-  background: #edf2f7;
-  border-color: #3182ce;
-  color: #3182ce;
+  background: var(--bg-tertiary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .add-task-btn:disabled {
-  background: #f7fafc;
-  border-color: #e2e8f0;
-  color: #a0aec0;
+  background: var(--bg-secondary);
+  border-color: var(--border-primary);
+  color: var(--text-tertiary);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Column Status */
@@ -366,103 +362,4 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .kanban-column {
-    background: #2d3748;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-  
-  .column-header {
-    border-bottom-color: #4a5568;
-  }
-  
-  .column-header::before {
-    background: rgba(0, 0, 0, 0.85);
-  }
-
-  .column-title {
-    color: #f7fafc !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  }
-  
-  .column-title:hover {
-    color: #63b3ed !important;
-  }
-  
-  .column-title-input {
-    background: #1a202c;
-    color: #f7fafc;
-    border-color: #63b3ed;
-  }
-  
-  .column-description {
-    color: #a0aec0 !important;
-  }
-  
-  .task-count {
-    background: rgba(255, 255, 255, 0.15);
-    color: #f7fafc !important;
-    border-color: rgba(255, 255, 255, 0.3);
-  }
-  
-  .capacity-indicator {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  
-  .empty-column-placeholder {
-    background-color: #1a202c;
-    border-color: #4a5568;
-    color: #718096;
-  }
-  
-  .tasks-container.drag-over .empty-column-placeholder {
-    background-color: rgba(49, 130, 206, 0.15);
-    border-color: #63b3ed;
-    color: #63b3ed;
-  }
-  
-  .add-task-input {
-    background: #1a202c;
-    border-color: #63b3ed;
-  }
-  
-  .new-task-input {
-    background: #2d3748;
-    border-color: #4a5568;
-    color: #f7fafc;
-  }
-  
-  .new-task-input:focus {
-    border-color: #63b3ed;
-  }
-  
-  .add-task-cancel {
-    background: #4a5568;
-    color: #e2e8f0;
-  }
-  
-  .add-task-cancel:hover {
-    background: #718096;
-  }
-  
-  .column-footer {
-    border-top-color: #4a5568;
-  }
-  
-  .add-task-btn {
-    background: #1a202c;
-    border-color: #4a5568;
-    color: #a0aec0;
-  }
-  
-  .add-task-btn:hover:not(:disabled) {
-    background: #2d3748;
-    border-color: #63b3ed;
-    color: #63b3ed;
-  }
-  
-  .column-status {
-    border-top-color: #4a5568;
-  }
-} 
+/* Dark mode handled by design system */ 

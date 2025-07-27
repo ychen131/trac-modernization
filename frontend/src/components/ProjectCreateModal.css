@@ -172,48 +172,18 @@
   padding-top: 20px;
 }
 
+/* Buttons use design system classes (.btn, .btn-primary, .btn-secondary) */
 .button {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  /* Additional project-specific button styling can be added here */
   min-width: 100px;
 }
 
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .button-primary {
-  background-color: var(--color-primary);
-  color: var(--text-inverse);
-  border-color: var(--color-primary);
-}
-
-.button-primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+  /* Extends .btn-primary from design system */
 }
 
 .button-secondary {
-  background-color: white;
-  color: #6b7280;
-  border-color: #d1d5db;
-}
-
-.button-secondary:hover:not(:disabled) {
-  background-color: #f9fafb;
-  border-color: #9ca3af;
-  color: #374151;
+  /* Extends .btn-secondary from design system */
 }
 
 /* Responsive adjustments */

@@ -288,23 +288,7 @@
   }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .attachment-list {
-    --bg-color: #1a202c;
-    --bg-secondary: #2d3748;
-    --bg-hover: #4a5568;
-    --bg-action-hover: #4a5568;
-    --bg-success-light: #1a2f1a;
-    --bg-danger-light: #742a2a;
-    --border-color: #4a5568;
-    --border-light: #2d3748;
-    --text-primary: #f7fafc;
-    --text-secondary: #a0aec0;
-    --text-success: #68d391;
-    --text-danger: #fc8181;
-  }
-}
+/* Dark mode handled by design system */
 
 /* High Contrast Mode */
 @media (prefers-contrast: high) {

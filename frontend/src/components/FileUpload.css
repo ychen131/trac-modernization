@@ -222,29 +222,17 @@
 }
 
 .upload-button {
-  background: var(--primary-color, #4299e1);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  /* Extends .btn-primary from design system */
+  padding: var(--space-3) var(--space-6);
+  gap: var(--space-2);
 }
 
 .upload-button:hover:not(:disabled) {
-  background: var(--primary-dark, #3182ce);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--primary-shadow, rgba(66, 153, 225, 0.3));
+  box-shadow: var(--shadow-md);
 }
 
 .upload-button:disabled {
-  background: var(--bg-disabled, #a0aec0);
-  cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
@@ -278,23 +266,4 @@
   }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .file-upload {
-    --bg-color: #1a202c;
-    --bg-secondary: #2d3748;
-    --bg-hover: #2a4365;
-    --bg-selected: #1a2b1a;
-    --bg-disabled: #2d3748;
-    --bg-danger-light: #742a2a;
-    --border-color: #4a5568;
-    --border-success: #38a169;
-    --text-primary: #f7fafc;
-    --text-secondary: #a0aec0;
-    --text-danger: #fc8181;
-    --primary-color: #63b3ed;
-    --primary-light: #90cdf4;
-    --primary-dark: #3182ce;
-    --primary-shadow: rgba(99, 179, 237, 0.3);
-  }
-} 
+/* Dark mode handled by design system */ 
