@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   hobbytrack:
-    build: .
+    build: 
+      context: .
+      args:
+        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
     container_name: hobbytrack-app
     ports:
       - "8000:8000"
@@ -12,6 +15,10 @@ services:
     environment:
       - ENV=production
       - PYTHONPATH=/app
+      # Clerk environment variables for backend
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
+      - CLERK_JWKS_URL=${CLERK_JWKS_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]

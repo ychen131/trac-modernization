@@ -3,6 +3,10 @@
 
 FROM node:18-alpine AS frontend-build
 
+# Accept build argument for Clerk publishable key
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+
 # Set working directory for frontend build
 WORKDIR /app/frontend
 
