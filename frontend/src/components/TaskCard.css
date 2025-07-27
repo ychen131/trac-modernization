@@ -22,8 +22,8 @@
 
 .task-card.drag-overlay {
   transform: rotate(3deg);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  border-color: #3182ce;
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary);
 }
 
 /* Compact variant */
@@ -42,8 +42,8 @@
 
 /* Expanded state */
 .task-card.expanded {
-  border-color: #3182ce;
-  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-primary);
 }
 
 /* Task Header */
@@ -71,18 +71,18 @@
 }
 
 .task-title:hover {
-  color: #3182ce;
+  color: var(--color-primary);
 }
 
 /* Title Editing */
 .task-title-input {
   width: 100%;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #2d3748;
-  border: 2px solid #3182ce;
-  border-radius: 4px;
-  padding: 4px 8px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
   background: white;
   outline: none;
   font-family: inherit;
@@ -225,9 +225,9 @@
 }
 
 .edit-btn:hover {
-  border-color: #3182ce;
-  color: #3182ce;
-  background: rgba(49, 130, 206, 0.05);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-shadow);
 }
 
 .delete-btn:hover {

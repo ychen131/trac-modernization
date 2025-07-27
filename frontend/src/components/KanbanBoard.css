@@ -37,22 +37,22 @@
 }
 
 .add-task-button {
-  background: #3182ce;
-  color: white;
+  background: var(--color-primary);
+  color: var(--text-inverse);
   border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(49, 130, 206, 0.2);
+  transition: var(--transition-base);
+  box-shadow: var(--shadow-primary);
 }
 
 .add-task-button:hover {
-  background: #2c5aa0;
+  background: var(--color-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(49, 130, 206, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .add-task-button:active {
@@ -143,9 +143,9 @@
 }
 
 .tasks-container.drag-over {
-  background-color: rgba(49, 130, 206, 0.05);
-  border: 2px dashed #3182ce;
-  border-radius: 8px;
+  background-color: var(--color-primary-shadow);
+  border: 2px dashed var(--color-primary);
+  border-radius: var(--radius-base);
 }
 
 .empty-column-placeholder {
@@ -162,9 +162,9 @@
 }
 
 .tasks-container.drag-over .empty-column-placeholder {
-  background-color: rgba(49, 130, 206, 0.1);
-  border-color: #3182ce;
-  color: #3182ce;
+  background-color: var(--color-primary-shadow);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* Task Card Styling */
@@ -190,8 +190,8 @@
 
 .task-card.drag-overlay {
   transform: rotate(3deg);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  border-color: #3182ce;
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary);
 }
 
 /* Task Header */
@@ -525,7 +525,7 @@
 }
 
 .refresh-button:hover {
-  background: #3182ce;
+  background: var(--color-primary);
 }
 
 .status-text {
@@ -730,8 +730,8 @@
 .edit-ticket-form textarea:focus,
 .edit-ticket-form select:focus {
   outline: none;
-  border-color: #3182ce;
-  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--color-primary-shadow);
 }
 
 .edit-ticket-form textarea {
@@ -770,14 +770,14 @@
 }
 
 .form-actions button[type="submit"] {
-  background: #3182ce;
-  color: white;
-  border-color: #3182ce;
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border-color: var(--color-primary);
 }
 
 .form-actions button[type="submit"]:hover {
-  background: #2c5aa0;
-  border-color: #2c5aa0;
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .form-actions button:disabled {
@@ -786,8 +786,8 @@
 }
 
 .form-actions button:disabled:hover {
-  background: #3182ce;
-  border-color: #3182ce;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 } 
 
 /* Upload Status Messages */

@@ -24,7 +24,7 @@
 }
 
 .project-selector-button.open {
-  border-color: #3b82f6;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -145,7 +145,7 @@
 }
 
 .dropdown-item.create-item {
-  color: #3b82f6;
+  color: var(--color-primary);
   font-weight: 500;
   border-top: 1px solid #e5e7eb;
   margin-top: 4px;
@@ -183,7 +183,7 @@
 }
 
 .dropdown-item.selected .project-item-description {
-  color: #3b82f6;
+  color: var(--color-primary);
 }
 
 .selected-indicator {
@@ -193,8 +193,8 @@
 }
 
 .create-icon {
-  background-color: #3b82f6;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
   width: 20px;
   height: 20px;
   border-radius: 50%;

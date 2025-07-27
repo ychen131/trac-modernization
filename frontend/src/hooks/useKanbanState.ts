@@ -73,14 +73,14 @@ const DEFAULT_COLUMNS: Omit<KanbanColumn, 'tasks'>[] = [
   {
     id: 'review',
     title: 'Review',
-    color: '#ac284f', // colorOrangeDark
+    color: '#ffb366', // pastel orange
     description: 'Tasks ready for review',
     maxTasks: 3,
   },
   {
     id: 'done',
     title: 'Done',
-    color: '#4e6773', // colorGrayDark
+    color: '#81c784', // light green
     description: 'Completed tasks',
     allowNewTasks: false,
   },
