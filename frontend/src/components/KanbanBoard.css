@@ -1,22 +1,22 @@
 /* Kanban Board Container */
 .kanban-board-container {
-  padding: 20px;
+  padding: var(--space-5);
   max-width: 1400px;
   margin: 0 auto;
-  background: #f7fafc;
+  background: var(--bg-secondary);
   min-height: 100vh;
 }
 
 .kanban-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: var(--space-8);
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .header-text {
@@ -24,15 +24,15 @@
 }
 
 .kanban-header h2 {
-  color: #2d3748;
-  margin-bottom: 8px;
-  font-size: 2rem;
-  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-semibold);
 }
 
 .kanban-header p {
-  color: #718096;
-  font-size: 1rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
   margin: 0;
 }
 
@@ -62,10 +62,10 @@
 /* Main Board Layout */
 .kanban-board {
   display: flex;
-  gap: 20px;
+  gap: var(--space-5);
   align-items: flex-start;
   overflow-x: auto;
-  padding: 10px 0;
+  padding: var(--space-3) 0;
   min-height: 600px;
 }
 
@@ -74,14 +74,14 @@
   flex: 1;
   min-width: 280px;
   max-width: 350px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: box-shadow 0.2s ease;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-base);
+  transition: var(--transition-base);
 }
 
 .kanban-column:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 /* Column Header */
@@ -134,12 +134,12 @@
 
 /* Tasks Container */
 .tasks-container {
-  padding: 16px;
+  padding: var(--space-4);
   min-height: 400px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  transition: background-color 0.2s ease;
+  gap: var(--space-3);
+  transition: var(--transition-base);
 }
 
 .tasks-container.drag-over {
@@ -153,12 +153,12 @@
   align-items: center;
   justify-content: center;
   min-height: 100px;
-  color: #a0aec0;
+  color: var(--text-tertiary);
   font-style: italic;
-  border: 2px dashed #e2e8f0;
-  border-radius: 8px;
-  background-color: #f7fafc;
-  transition: all 0.2s ease;
+  border: 2px dashed var(--border-primary);
+  border-radius: var(--radius-base);
+  background-color: var(--bg-secondary);
+  transition: var(--transition-base);
 }
 
 .tasks-container.drag-over .empty-column-placeholder {
@@ -665,15 +665,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 20px 10px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: var(--space-5) var(--space-5) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #2d3748;
-  font-size: 1.25rem;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
 }
 
 .modal-close {
@@ -693,13 +693,13 @@
 }
 
 .modal-close:hover {
-  background-color: #f7fafc;
-  color: #2d3748;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* Edit Form Styles */
 .edit-ticket-form {
-  padding: 20px;
+  padding: var(--space-5);
 }
 
 .edit-ticket-form .form-group {
@@ -708,10 +708,10 @@
 
 .edit-ticket-form label {
   display: block;
-  margin-bottom: 0.5rem;
-  color: #2d3748;
-  font-weight: 500;
-  font-size: 0.875rem;
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
 }
 
 .edit-ticket-form input,
